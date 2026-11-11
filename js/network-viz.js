@@ -47,6 +47,7 @@
       }
       coords.forEach((p,i)=>{p.x=clamp((p.x+d[i].x)*.999,-1,1);p.y=clamp((p.y+d[i].y)*.999,-1,1);p.z=clamp((p.z+d[i].z)*.999,-1,1)});
     }
+    if(layout==='lgl')for(const pos of coords)pos.z=0;
     return coords;
   }
   function mount(el,{nodes=[],edges=[],prefs={}}){
@@ -58,12 +59,12 @@
     const widthMax=()=>Math.max(300,canvas.clientWidth||800);
     const index=new Map(nodes.map((node,i)=>[node.id,i]));
     const points=normalizedLayout(nodes,edges,prefs.layout);
-    let W=0,H=0,dpr=1, projected=[], drag=null,hover=-1,focus=-1,frame=0;
+    let W=0,H=0,dpr=1, projected=[], drag=null,hover=-1,focus=index.has(prefs.focusId)?index.get(prefs.focusId):-1,frame=0;
     let visible=true;
     const adjacent=new Map(nodes.map((n,i)=>[i,new Set()]));
     edges.forEach(e=>{const a=index.get(e.source),b=index.get(e.target);if(a!==undefined&&b!==undefined){adjacent.get(a).add(b);adjacent.get(b).add(a)}});
-    const radius=n=>prefs.sizeMode==='degree'?clamp(5.5+Math.sqrt(Math.max(0,n.degree))*2,6,17):8;
-    const twoD=prefs.layout==='circle';
+    const radius=n=>{const key=prefs.sizeMode==='in'?'inDegree':prefs.sizeMode==='out'?'outDegree':prefs.sizeMode==='between'?'betweenness':prefs.sizeMode==='flat'?'flat':'degree';const score=key==='flat'?3:key==='betweenness'?(Number(n.betweenness)||0)*48:Number(n[key]||0);return clamp((5.5+Math.sqrt(Math.max(0,score))*2)*(Number(prefs.nodeMultiplier)||1),4,34)};
+    const twoD=prefs.layout==='circle'||prefs.layout==='lgl';
     function size(){
       const rect=canvas.getBoundingClientRect();const nw=Math.max(300,rect.width||widthMax());
       const nh=Math.max(280,rect.height||Math.min(560,nw*.62));
@@ -75,19 +76,19 @@
       const x=p.x*cy+p.z*sy,z=-p.x*sy+p.z*cy;
       const y=p.y*cp-z*sp, z2=p.y*sp+z*cp;
       const f=twoD?1:3.7/(3.7-z2*(Number(prefs.depth??72)/100));
-      const scale=Math.min(W*.44,H*.44)*view.zoom*f;
+      const scale=Math.min(W*.44,H*.44)*view.zoom*f*(Number(prefs.spread)||1);
       return {x:W/2+x*scale,y:H/2+y*scale,z:z2,s:f};
     }
     function drawLine(a,b,color,width,alpha,arrow){
       const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
-      if(d<1)return;
+      if(d<1){if(prefs.showLoops){ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.arc(a.x+13,a.y-13,13,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}return;}
       const tx=b.x-dx/d*arrow,ty=b.y-dy/d*arrow;
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(tx,ty);
       ctx.lineWidth=width;ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.stroke();
       // An arrowhead near the target preserves the directed meaning.
-      const angle=Math.atan2(dy,dx),tip=clamp(5+width,5,10);
+      if(prefs.showArrows!==false){const angle=Math.atan2(dy,dx),tip=clamp(5+width,5,10);
       ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx-tip*Math.cos(angle-.46),ty-tip*Math.sin(angle-.46));
-      ctx.lineTo(tx-tip*Math.cos(angle+.46),ty-tip*Math.sin(angle+.46));ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.globalAlpha=1;
+      ctx.lineTo(tx-tip*Math.cos(angle+.46),ty-tip*Math.sin(angle+.46));ctx.closePath();ctx.fillStyle=color;ctx.fill()}ctx.globalAlpha=1;
     }
     function draw(){
       frame=0;if(!canvas.isConnected||!visible)return;
@@ -111,7 +112,7 @@
         const unrelated=focus>=0&&i!==focus&&!adjacent.get(focus).has(i);
         const r=radius(node)*p.s*(near?1.2:1);
         ctx.globalAlpha=unrelated?.22:node.degree===0?.58:1;
-        ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=colorFor(node.building);ctx.fill();
+        ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=colorFor(prefs.categoryField==='role_group'?node.role_group:node.building);ctx.fill();
         ctx.lineWidth=near?3.5:2;ctx.strokeStyle='#fff';ctx.stroke();
         if(near){ctx.beginPath();ctx.arc(p.x,p.y,r+5,0,Math.PI*2);ctx.strokeStyle='#45a5a6';ctx.lineWidth=2;ctx.stroke()}
         ctx.globalAlpha=1;
@@ -158,7 +159,7 @@
     canvas.addEventListener('wheel',wheel,{passive:false});
     canvas.addEventListener('keydown',keydown);
     const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(schedule):null;
-    observer?.observe(canvas);schedule();
+    observer?.observe(canvas);if(focus>=0)setFocus(focus);schedule();
     const c={destroy(){observer?.disconnect();cancelAnimationFrame(frame);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerUp);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('keydown',keydown)}};
     controllers.add(c);return c;
   }

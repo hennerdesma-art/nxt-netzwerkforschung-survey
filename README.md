@@ -8,22 +8,24 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 
 - NXT-themed login and responsive dashboard (desktop / iPad / mobile)
 - Person directory, manual creation, Excel/CSV import
-- Exact survey instrument V7 from the provided Excel template: consent, A1-A6, B1-B6 roster matrix, C1-C9, review
+- Interview steps A (person group), B (directed professional edges), C (locations), D (review)
 - Central Postgres database with Supabase Auth and strict RLS membership checks
 - Atomic interview save and optimistic-lock version to prevent concurrent overwriting
 - Cross-device status sync with realtime listener (if publication enabled) and 30s polling
 - Automatic draft save after 12 seconds without edits, plus manual save and completion
 - Interview start/completion timestamps and duration in minutes for pilot timing checks
-- Ten-sheet Excel export, including coded Gesamt_Personen, Gesamt_Netzwerk and original Codebuch
+- Seven-sheet Excel export: Persons, Interviews, Answers, Edges, Locations, Nodes, Datenqualitaet
 - Gephi-compatible Node/Edge sheet headers (Id, Label, Source, Target)
 
-QUESTIONNAIRE VERSION: `Fragebogen_NXT_Erfassung_2(1).xlsx` (Excel version of questionnaire V7, winter semester 2026/27). The A/B/C question wording, choice lists and variable coding come from P00, Listen and Codebuch. IMPORTANT: the original Excel privacy notice describes handling that differs from this web platform. The web UI explicitly flags this. University privacy/ethics review and final information/consent wording are required before real data collection.
+IMPORTANT: The questionnaire is a FIRST INSTRUMENT DRAFT based on the feedback
+notes dated 10 November 2026. The final full questionnaire was not provided.
+Do not collect real interview data until the wording and the privacy process are approved.
 
 ## Setup 1: dedicated Supabase project
 
 1. Create an independent Supabase project, preferably in a vetted EU region
    selected by your university's data protection officer.
-2. Open `SQL Editor` and run `sql/001_initial_schema.sql` once (already applied in the connected NXT project).
+2. Open `SQL Editor` and run `sql/001_initial_schema.sql` once.
 3. In `Authentication > Users`, create an email/password user with a real
    organization-controlled email address. Set **the temporary password agreed separately in the private team conversation**
    as requested. Confirm the email within the Supabase dashboard or follow its
@@ -36,10 +38,11 @@ QUESTIONNAIRE VERSION: `Fragebogen_NXT_Erfassung_2(1).xlsx` (Excel version of qu
    ```
 
 5. Configure `js/config.js` with your `SUPABASE_URL`, public
-   `SUPABASE_PUBLISHABLE_KEY` (begins `sb_publishable_`), and optionally `AUTH_EMAIL` (leave it empty for an email + password login).
+   `SUPABASE_PUBLISHABLE_KEY` (begins `sb_publishable_`), and `AUTH_EMAIL`.
    **NEVER** use a secret key, service_role key, or database password in the site.
-6. Realtime publication is already active for `persons`, `interviews`, and `edges`
-   in the connected NXT project. The website also polls every 30 seconds.
+6. In Supabase > Database > Publications, add `persons`, `interviews`, and
+   `edges` to `supabase_realtime` if you want immediate updates. Otherwise
+   the website checks the shared data every 30 seconds.
 7. In Authentication, restrict self-registration and configure Auth rate
    limiting as appropriate. Do not enable anonymous sign-in.
 8. Validate from two browsers: sign in, create a test person, start an
@@ -69,7 +72,7 @@ Supabase Auth + RLS. Public source code and the publishable key are not secrets.
 - `persons`: registered people / network nodes
 - `interviews`: one interview per person, version, status, timestamp, interviewer
 - `answers`: JSON interview answers (question_key, answer)
-- `edges`: directed source -> target, B2 topic, B3 frequency, B4 occurrence, B5 medium, B6 prior acquaintance
+- `edges`: directed source -> target, frequency, topics, exchange form
 - `locations`: repeated spatial activity locations per person
 
 The SQL RPC `save_interview_snapshot` saves data in one transaction. If two
@@ -97,7 +100,7 @@ silently overwriting the first. Different interviews can be edited in parallel.
 
 ## Known limits / TODO
 
-- Confirm the V7 wording and adjust the privacy/consent text to the actual Supabase storage setup before real interviews.
+- Integrate the FINAL complete questionnaire before real interviews.
 - Add individual Auth accounts and per-interviewer assignments if requested.
 - Add automated retention/deletion policy after research approval.
 - Confirm university branding usage and privacy review.
@@ -113,15 +116,76 @@ python3 -m http.server 8080
 Open `http://localhost:8080`. Without a Supabase configuration the page shows
 an installation guide (it does NOT expose an unprotected demo survey).
 
-## Questionnaire V7 and coding
+## Source of questionnaire content
 
-Source: user-provided `Fragebogen_NXT_Erfassung_2(1).xlsx`. Only generic question texts, choice lists, codebook variables and the embedded non-personal campus map were used in source code. No participant names or answers from the workbook are included in GitHub.
+`Fragen zum Fragenkatalog: 10.11.2026` (feedback notes, supplied by the user):
+A1 group membership, A2 professional self-classification and organizational
+mapping question, B exchange frequency/mode/content categories including
+research, teaching, and self-governance; interview conducted together with
+respondent, interview timing to be tested, attendance tracking.
 
-- A: consent and A1-A6 with exact choices (single selection where the Excel sheet specifies it).
-- B: full participant roster (except the respondent), B1 binary directed edge, B2 F/L/S/A, B3 1-5, B4 S/G/B, B5 P/D/B, B6 known-before-NXT; plus the separate B6 attitudinal Likert item.
-- C: C1 office, C2 locations and floor, C3/C4 weekdays, C5 arrival, C6 six room entries, C7 campus destinations, C8 maximum 3 locations, C9 five Likert statements.
-- `Gesamt_Personen` and `Gesamt_Netzwerk` follow the workbook variable names and include missing versus zero distinction for B1. The `Codebuch` sheet holds the workbook coding reference.
-- Declined participation is saved as a separate interview status and never creates a positive exchange edge. Server-side completion requires affirmative consent.
-- `sql/003_questionnaire_v7.sql` extends the existing schema without dropping the participant list or collected data. This migration has been applied to the connected NXT Supabase project.
-- To run the offline browser regression test: `python tests/questionnaire_v7_smoke.py` (requires Playwright and Chromium).
+## Netzwerkmonitor: interaktive Analysen (November 2026)
 
+Im geschützten Netzwerkbereich gibt es jetzt eine drehbare 3D-Netzwerkansicht
+(Canvas mit 3D-Koordinaten und perspektivischer Kamera), einen 2D-Kreismodus
+und ein Gebäude-Cluster-Layout. Drag mit Maus oder Touch dreht die 3D-Ansicht,
+Mausrad zoomt; Pfeiltasten und +/- sind Alternativen. Klick auf einen Knoten
+markiert seine eingehenden und ausgehenden Beziehungen. Die Positionen sind
+rechnerische Visualisierungskoordinaten **und keine Gebäudedistanzen**.
+
+Ein Stift-Button öffnet die Darstellungseinstellungen, darunter Knotenanzahl,
+Sortierung, Größe, Beschriftung, Gebäudeansicht, B2-Austauschbereich und
+Isoliertenfilter. Der Vollbild-Button nutzt die Browser-Fullscreen-API,
+mit einem vollflächigen Dialog als Fallback. Alle Einstellungen wirken nur
+auf die Darstellung; globale KPI-Kacheln beziehen sich weiterhin auf alle
+vorhandenen gerichteten Kanten.
+
+Der Monitor berechnet gerichtete Dichte, gegenseitige Nennung, isolierte
+Knoten, schwach verbundene Komponenten, Ein-/Ausgangsgrad, normalisierte
+Betweenness (Brandes, gerichtete ungewichtete kürzeste Pfade),
+Gebäudeverbindungen und B2-Austauschbereiche. Diese Kennzahlen sind **nur
+explorativ**, solange noch Interviews fehlen. Fehlende Nennungen unbefragter
+Personen dürfen nicht als Nullkanten interpretiert werden. Unbekannte Gebäude
+werden gesondert ausgewiesen, nicht als gleiche Gebäude gezählt.
+
+Technik: `js/network-viz.js` ist ein eigenes, lokal eingebundenes Modul ohne
+zusätzlichen externen Grafikdienst. Die Visualisierung wird erst nach der
+Supabase-Anmeldung und dem Laden der berechtigten Daten erzeugt.
+
+Regressionstests (synthetische Daten, keine Verbindung zur echten Datenbank):
+`python tests/network_analysis_smoke.py` und
+`python tests/questionnaire_v7_smoke.py`.
+
+## Netzwerk-Analyse-Studio (11.11.2026)
+
+Der neue Bereich **Netzwerk** ist an typische Social-Network-Analysis-Dashboards angelehnt, bleibt aber auf die NXT-Interviewdaten zugeschnitten:
+
+- **Network Graphs:** Alle Knoten statt einer begrenzten 16-Personen-Vorschau, interaktives 3D/2D-Canvas (Drehen, Zoomen, Antippen), Vollbild, ID-Auswahl und Kategorienauswahl.
+- **Graph-Filter:** Labels, gerichtete Pfeile, Mehrfachkanten, Schleifen (für importierte GraphML-Dateien), Isolierte, nur interviewte Personen, Themenbereich, Kategorie nach Gebäude/Mitarbeitergruppe, schwache oder starke Komponenten und Mindestgröße.
+- **Darstellung:** 3D-Kraftlayout, 2D-Kraftlayout, Gebäudecluster und Kreis; Streuung, Tiefe, Größe nach In-/Out-/Gesamtgrad oder Betweenness, Multiplikator und Diagrammhöhe.
+- **Network Metrics:** Gerichtete Dichte, schwache/starke Komponenten, Erreichbarkeit, In-/Out-Degree, Betweenness und Closeness.
+- **Textanalyse:** Häufigkeiten der B2-Austauschbereiche und aggregierte Worthäufigkeiten aus optionalen Kanten-Notizen (mindestens zwei Vorkommen, einfache Stopwortfilterung). Das ersetzt keine wissenschaftliche qualitative Inhaltsanalyse.
+- **Assortativität:** gerichtete Mischungsmatrix und Newman-r nach Gebäude oder Mitarbeitergruppe; unbekannte Kategorien werden aus der Berechnung ausgeschlossen.
+- **Lokale GraphML-Import-Vorschau** (keine Datenbankschreiboperation), rein synthetische Demodaten, GraphML-Export, interaktive eigenständige HTML-Datei und PNG-Ausgabe. Exporte realer Forschungsdaten sind Administratoren vorbehalten.
+
+**Methodischer Hinweis:** 3D-Layouträume sind keine echten Gebäudekoordinaten. Wegen noch offener Interviews sind Dichte, Reziprozität, Zentralität und Isolierung stets vorläufig und explorativ. Die GraphML-Importvorschau wird im Browser gehalten und nicht mit Supabase synchronisiert.
+
+## Einstellungen – Interview einzeln zurücksetzen
+
+Der neue Navigationsreiter **Einstellungen** bietet Administratoren eine Personenliste mit Suche. Der Reset eines vorhandenen Interviews erfordert:
+
+1. Person auswählen und die Personen-ID im Bestätigungsdialog erneut eintippen.
+2. Die Warnung zum irreversiblen Löschen bestätigen.
+3. Eine **serverseitige** RPC `public.reset_interview(uuid,bigint,text)` mit Rollenprüfung, Versionsprüfung und atomarem Reset ausführen.
+
+Gelöscht werden **nur die Antworten dieses Interviews, dessen ausgehende Kanten und die zugeordneten Ortsdaten**; das Interview selbst bleibt mit Status `planned` erhalten, damit es erneut begonnen werden kann. Person und deren Stammdaten bleiben bestehen, ebenso alle anderen Interviews. Ein Audit-Log hält Zeitpunkt, Admin-ID, Ziel-ID, vorherigen Status und die Anzahl der entfernten Datensätze fest. Bei gleichzeitiger Bearbeitung wird ein Versionskonflikt statt einer stillen Löschung erzeugt.
+
+Die produktive Datenbank verwendet dafür `sql/004_admin_reset_interview.sql` **gefolgt von** `sql/005_harden_reset_rpc.sql`. Die privilegierte Implementierung liegt im privaten Schema `nxt_private`; öffentlich erreichbar ist nur ein `SECURITY INVOKER`-Wrapper. Die Oberfläche allein schützt keine Löschoperation – die Autorisierung erfolgt in der Datenbank. **Es wurde bei der Einrichtung kein echtes Interview zurückgesetzt.**
+
+Testläufe mit synthetischen Daten:
+
+```bash
+python tests/network_studio_reset_smoke.py
+python tests/verify_standalone_html.py
+python tests/questionnaire_v7_smoke.py
+```

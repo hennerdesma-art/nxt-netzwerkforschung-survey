@@ -5,8 +5,8 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 
 ## 1. Supabase-Projekt einrichten
 
-1. Das separate Supabase-Projekt **NXT Netzwerkforschung** wurde in Frankfurt erstellt.
-2. Die Migrationen `sql/001_initial_schema.sql` und `sql/003_questionnaire_v7.sql` sowie die Live-Synchronisierung sind bereits eingerichtet.
+1. Ein eigenes, von anderen Projekten getrenntes Supabase-Projekt anlegen.
+2. Die Datei `sql/001_initial_schema.sql` im **SQL Editor** ausführen.
 3. Unter **Authentication > Users** einen Benutzer mit einer gültigen,
    teamverwalteten E-Mail-Adresse anlegen. Als temporäres Passwort das
    getrennt mitgeteilte Team-Passwort setzen. Es steht absichtlich nirgends
@@ -18,11 +18,12 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
    values ('ECHTE_AUTH_UUID', 'NXT Interview-Team', 'admin');
    ```
 
-5. Projekt-URL und **Publishable Key** sind in `js/config.js` bereits hinterlegt.
-   `AUTH_EMAIL` ist optional: Leer lassen für Login mit E-Mail und Passwort;
-   eine feste Team-E-Mail ermöglicht später einen Passwort-only-Login.
-6. Die Realtime-Publikation fuer `persons`, `interviews` und `edges` ist aktiv;
-   zusätzlich synchronisiert die Website alle 30 Sekunden.
+5. URL und **Publishable Key** (NICHT Secret-/Service-Key!) im Supabase-Dashboard
+   kopieren. In `js/config.js` die Werte `SUPABASE_URL`,
+   `SUPABASE_PUBLISHABLE_KEY` und die verwendete `AUTH_EMAIL` eintragen.
+6. Unter **Database > Publications** in `supabase_realtime` die Tabellen
+   `persons`, `interviews` und `edges` freischalten. Ohne diese Option
+   aktualisiert die Website den Datenstand alle 30 Sekunden.
 
 ## 2. GitHub Pages einrichten
 
@@ -36,18 +37,21 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 
 ## 3. Funktionstest mit fiktiven Daten
 
-1. Mit der unter Supabase Auth angelegten E-Mail-Adresse und dem Team-Passwort anmelden.
+1. Mit dem Team-Passwort anmelden.
 2. Eine fiktive Testperson anlegen und ein Interview beginnen.
 3. Eine zweite fiktive Person als Austauschpartner hinterlegen.
 4. Entwurf speichern, dieselbe Website auf einem zweiten Gerät oeffnen
    und die aktualisierten Daten prüfen.
 5. Interview abschliessen und unter **Datenexport** die XLSX-Datei erzeugen.
-6. Kontrollieren, ob `Gesamt_Personen`, `Gesamt_Netzwerk`, `Codebuch` sowie `Persons`, `Interviews`, `Answers`, `Edges`, `Locations`, `Nodes` und `Datenqualitaet` vorhanden sind.
+6. Kontrollieren, ob `Persons`, `Interviews`, `Answers`, `Edges`, `Locations`,
+   `Nodes` und `Datenqualitaet` vorhanden sind.
 7. Testdaten vor dem echten Studienstart wieder entfernen.
 
 ## Wichtige Hinweise
 
-- Die Interviewmaske entspricht der hochgeladenen **Excel-Fragenbogenfassung V7** (Einwilligung, A1–A6, B1–B6, C1–C9). Die echte Verwendung setzt weiterhin die fachliche Freigabe der Fragen und eine angepasste Datenschutzerklärung voraus. Die Excel-Vorlage behauptet teilweise eine sofortige Pseudonymisierung; in der Web-App bleiben Namen für die Erhebung geschützt gespeichert.
+- Die aktuell eingebauten Fragen sind ein **erster Entwurf** anhand der
+  Rückmeldungen vom 10.11.2026. Der vollstaendige endgültige Fragenkatalog
+  muss vor der Datenerhebung eingearbeitet und abgestimmt werden.
 - Das vereinbarte Anfangspasswort **vor echten Interviews ändern** und
   moeglichst individuelle Teamkonten nutzen.
 - Ein passwortgeschuetzter Login ist kein Datenschutzkonzept. Speicherung,
@@ -58,3 +62,10 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
   fuer den Pilot-Test wird die Zeitdifferenz bis zum Abschluss exportiert.
 - Ein Interviewentwurf wird nach 12 Sekunden ohne weitere Eingabe automatisch
   gespeichert, sofern keine unvollstaendige Kantenzeile vorliegt.
+
+## Zusätzliche Funktionen: Netzwerkstudio und Einstellungen
+
+- **Netzwerk:** Reiter für Graphen, Metriken, Textanalyse und Assortativität. Das GraphML-Laden bleibt lokal im Browser, ohne die Forschungsdatenbank zu verändern. Exporte als GraphML, HTML und PNG können personenbezogene Daten enthalten und gehören nur in geschützte Hochschulablagen.
+- **Einstellungen:** Ausschließlich Administratoren können einen einzelnen Interviewdatensatz nach expliziter Bestätigung der Personen-ID zurücksetzen. Die Person bleibt erhalten; Interviewantworten, ausgehende Kanten und Orte werden gelöscht und der Reset serverseitig protokolliert.
+- Benötigte neue Migrationen im Supabase SQL Editor: `sql/004_admin_reset_interview.sql` und **danach** `sql/005_harden_reset_rpc.sql` (für das verbundene Projekt bereits ausgeführt). Nicht bei bereits vorhandener Migration erneut anwenden.
+- Bei gleichzeitigen Änderungen muss zuerst die Seite neu geladen werden. Vor echten Resets eine Sicherung über den Excel-Export erstellen.
