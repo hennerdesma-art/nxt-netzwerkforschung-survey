@@ -6,7 +6,7 @@
   const root = document.getElementById('app');
   const state = {
     db: null, user: null, member: null, people: [], interviews: [], edges: [], locations: [],
-    route: 'dashboard', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
+    route: 'dashboard', networkLayer:'social', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
     channel: null, poll: null, modal: '', draftDirty: false,
     network: {controlsOpen:true,layout:'orbit3d',metric:'degree',limit:39,labels:true,hideIsolates:false,onlyInterviewed:false,sizeMode:'degree',depth:72,topic:'all',studioTab:'graphs',multipleEdges:true,showLoops:false,categoryField:'building',enabledCategories:null,componentMode:'weak',componentMin:1,recalculateComponents:true,spread:1,nodeMultiplier:1,canvasHeight:500,showArrows:true,focusId:'',preview:null,previewName:''},resetAudit:[],settingsSearch:'',resetTarget:null
   };
@@ -97,7 +97,7 @@
     }catch(e){console.warn('Realtime unavailable:',e.message);}
     state.poll=setInterval(()=>reloadData().catch(()=>{}),30000);
   }
-  async function logout(){
+  async function logout(){window.NXTCampus?.cleanup?.();
     clearTimeout(autosaveTimer);
     if(state.channel){await state.db.removeChannel(state.channel);state.channel=null;}
     if(state.poll){clearInterval(state.poll);state.poll=null;}
@@ -275,8 +275,14 @@
     if(!state.user||!state.member){renderLogin();return;}
     const pages={dashboard:renderDashboard,people:renderPeople,interviews:renderInterviews,interview:renderInterview,network:renderNetwork,export:renderExport,settings:renderSettings};
     window.NXTNetworkViz?.cleanup?.();
+    window.NXTCampus?.cleanup?.();
     root.innerHTML=shell((pages[state.route]||renderDashboard)());
-    if(state.route==='network'&&networkPrefs().studioTab==='graphs')mountNetworkVisuals(root);
+    if(state.route==='network'){
+      if(state.networkLayer==='geographic'){
+        const campusRoot=root.querySelector('#nxt-campus-workspace');
+        if(campusRoot)window.NXTCampus?.mount?.(campusRoot,{people:state.people,edges:state.edges,interviews:state.interviews,locations:state.locations,db:state.db});
+      } else if(networkPrefs().studioTab==='graphs')mountNetworkVisuals(root);
+    }
   }
   function pageHead(label,title,description,actions=''){
     return `<div class="page-head"><div><div class="eyebrow">${label}</div><h1>${title}</h1><p>${description}</p></div>${actions?`<div class="page-actions">${actions}</div>`:''}</div>`;
@@ -491,8 +497,14 @@
     return `<div class="dash-grid"><div class="panel panel-inner"><div class="panel-head"><h2>Austauschbereiche (B2)</h2><small>${a.total} beobachtete Kanten</small></div><div class="topic-bars">${Object.entries(a.topics).map(([key,n])=>`<div class="topic-row"><div><strong>${esc(labels[key])}</strong><span>${n}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(n/max*100)}%"></div></div></div>`).join('')}</div><p class="muted small">Eine Hauptkategorie pro Austauschbeziehung. Keine automatische Interpretation von Freitexten.</p></div><div class="panel panel-inner"><div class="panel-head"><h2>Häufige Begriffe in Kanten-Notizen</h2><small>${a.withNotes} Notizfelder</small></div>${a.frequencies.length?`<div class="network-word-list">${a.frequencies.map(([word,count])=>`<span class="pill">${esc(word)} <strong>${count}</strong></span>`).join('')}</div>`:empty('Keine wiederholten Begriffe','Mindestens zwei Vorkommen eines Begriffs sind nötig.','file')}<p class="muted small">Nur aggregierte Wortfrequenzen (ab 2 Vorkommen). Freitexte werden nicht automatisch öffentlich angezeigt; personenbezogene Angaben in Notizen weiterhin schützen.</p></div></div>`;}
   function renderNetworkAssortativity(model){const p=model.prefs,attribute=p.assortAttribute||'building',a=window.NXTNetworkTools?.assortativity(model.nodes,model.validEdges,attribute);if(!a)return '';
     const max=Math.max(1,...a.matrix.flat());return `<div class="panel panel-inner"><div class="panel-head"><div><h2>Kategorienassortativität</h2><small>Verbindungen zwischen gleichen und unterschiedlichen Kategorien</small></div><div class="field"><label for="assort-attribute">Merkmal</label><select id="assort-attribute" data-network-input="assortAttribute">${option('building','Gebäude',attribute)}${option('role_group','Mitarbeitergruppe',attribute)}</select></div></div><div class="network-kpi"><div class="summary-item"><strong>${a.coefficient===null?'n. a.':a.coefficient.toFixed(3)}</strong><small>Newman-Assortativität r (gerichtet)</small></div><div class="summary-item"><strong>${(a.sameShare*100).toFixed(1)} %</strong><small>Kanten innerhalb derselben Kategorie</small></div><div class="summary-item"><strong>${a.valid}</strong><small>Kanten mit bekannten Merkmalen</small></div></div>${a.valid?`<div class="table-wrap"><table class="data-table nxt-matrix-table"><thead><tr><th>Von ↓ / Nach →</th>${a.categories.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${a.matrix.map((row,i)=>`<tr><th>${esc(a.categories[i])}</th>${row.map(value=>`<td style="background:rgba(0,139,146,${(0.07+0.38*value/max).toFixed(2)})">${value}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:empty('Keine auswertbaren Beziehungen','Erfasst sein müssen fachliche Beziehungen und zugehörige Kategorien.','network')}<div class="notice-box" style="margin-top:18px">${icon('info')}<span>r liegt theoretisch zwischen −1 und +1: positiv bedeutet tendenziell mehr Beziehungen innerhalb derselben Kategorie. Fehlende Standorte oder Gruppen wurden ausgeschlossen (${a.excluded} Kanten). Ein unvollständiger Rücklauf und kleine Zellzahlen können die Interpretation stark verzerren.</span></div></div>`;}
-  function renderNetwork(){const model=computeNetworkModel(),c=model.counts,p=model.prefs;
-    return pageHead('Netzwerkmonitor','Netzwerkforschung · Analyse-Studio','Graphvisualisierung, Filter und wissenschaftliche Kennzahlen nach dem NXT-Fragebogen.',`<button class="btn btn-light" data-action="navigate" data-route="export">${icon('download')} Excel-Export</button><button class="btn btn-light" data-action="open-network-fullscreen">${icon('maximize')} Vollbild</button>`)+networkViewTabs()+
+  function networkLevelTabs(){
+    const geo=state.networkLayer==='geographic';
+    return '<div class="nxt-network-layer-tabs" role="tablist" aria-label="Netzwerkebenen">'+
+      '<button type="button" role="tab" aria-selected="'+(!geo)+'" class="'+(geo?'':'active')+'" data-action="network-layer" data-layer="social">Soziale Ebene</button>'+
+      '<button type="button" role="tab" aria-selected="'+geo+'" class="'+(geo?'active':'')+'" data-action="network-layer" data-layer="geographic">Geografische Ebene</button></div>';
+  }
+  function renderNetwork(){if(state.networkLayer==='geographic')return pageHead('Raum & Netzwerk','Geografische Ebene','2,5D Campuslayout, Gebäudezuordnungen, soziale Treffpunkte und gerichtete räumliche Netzwerkbeziehungen.',`<button class="btn btn-light" data-action="navigate" data-route="export">${icon('download')} Excel-Export</button>`)+networkLevelTabs()+(window.NXTCampus?.renderShell?.()||'<div class="notice-box">Das Campusmodul wurde noch nicht geladen. Bitte Seite neu laden.</div>');const model=computeNetworkModel(),c=model.counts,p=model.prefs;
+    return pageHead('Netzwerkmonitor','Netzwerkforschung · Analyse-Studio','Graphvisualisierung, Filter und wissenschaftliche Kennzahlen nach dem NXT-Fragebogen.',`<button class="btn btn-light" data-action="navigate" data-route="export">${icon('download')} Excel-Export</button><button class="btn btn-light" data-action="open-network-fullscreen">${icon('maximize')} Vollbild</button>`)+networkLevelTabs()+networkViewTabs()+
     (p.studioTab==='graphs'?renderGraphWorkspace(model):p.studioTab==='metrics'?renderDetailedNetworkMetrics(model):p.studioTab==='text'?renderTextNetworkAnalysis(model):renderNetworkAssortativity(model));
   }
 
@@ -934,6 +946,7 @@
     if(a==='refresh'){try{await reloadData();toast('Daten aktualisiert.','success');}catch(err){toast(err.message,'error');}return;}
     if(a==='ask-interview-reset'){openResetConfirmation(btn.dataset.person);return;}
     if(a==='confirm-interview-reset'){await performInterviewReset();return;}
+    if(a==='network-layer'){state.networkLayer=btn.dataset.layer==='geographic'?'geographic':'social';if(state.route==='network')render();return;}
     if(a==='network-tab'){networkPrefs().studioTab=btn.dataset.tab;if(state.route==='network')render();return;}
     if(a==='graph-set-layout'){networkPrefs().layout=btn.dataset.layout;render();return;}
     if(a==='load-network-demo'){const preview=makeNetworkDemo();const prefs=networkPrefs();prefs.preview=preview;prefs.previewName='Synthetisches Demo-Netzwerk';prefs.limit=preview.people.length;prefs.enabledCategories=null;render();return;}

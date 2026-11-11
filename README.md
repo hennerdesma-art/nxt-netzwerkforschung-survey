@@ -189,3 +189,11 @@ python tests/network_studio_reset_smoke.py
 python tests/verify_standalone_html.py
 python tests/questionnaire_v7_smoke.py
 ```
+
+## Geografische Ebene (2,5D, konzeptionelles Campusmodell)
+
+Unter **Netzwerk** kann zwischen **Soziale Ebene** und **Geografische Ebene** gewechselt werden. Die neue Ansicht zeigt die grafische Campusbasis, Personen/Bürogebäude, B1-Kanten als gerichtete Gebäudeaggregation, Themen-/Statusfilter, Matrix, Campusorte und Datenqualität. Die Bürostandortzählung ist **keine Anwesenheitsmessung**. C2/C7/C8-Werte werden ausschließlich als aggregierte Antwortnennungen und nicht als punktgenaue Bewegungen angezeigt. Die Karte bleibt auch beim Zoomen durch das Bild-Koordinatensystem (`NXT-IMG-1000`) konsistent.
+
+Die künstlerische 2,5D-Grafik hat **keinen gültigen Metermaßstab**. Die fünf Gebäudehöhen sind vorläufig mit ca. zwei oberirdischen Geschossen bzw. 7 m angenommen. Der Originalplan ist über den Karten-Button abrufbar. Positionen der im Fragebogen markierten sozialen Orte und Anreisepunkte sind auf dem 2,5D-Bild näherungsweise übertragen. Methodik, Kontrollpunkte und ausstehende Validierung: [`CAMPUS_KOORDINATEN.md`](CAMPUS_KOORDINATEN.md).
+
+**Datenquellen:** `persons` (Hauptgebäude, Raum, Rolle), `interviews` (Status), `edges` (gerichtete fachliche Nennungen) und nach Anmeldung `answers` (C2/C7/C8). Es gibt **keine** Änderung des Supabase-Schemas, der bestehenden Fragebögen oder ihrer Antworten. Das Browsermodul wird erst nach erfolgreicher Team-Anmeldung mit Forschungsdaten befüllt. Test: `python tests/campus_smoke.py` (nur synthetische Daten).
