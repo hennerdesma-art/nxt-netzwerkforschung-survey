@@ -8,18 +8,16 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 
 - NXT-themed login and responsive dashboard (desktop / iPad / mobile)
 - Person directory, manual creation, Excel/CSV import
-- Interview steps A (person group), B (directed professional edges), C (locations), D (review)
+- Exact survey instrument V7 from the provided Excel template: consent, A1-A6, B1-B6 roster matrix, C1-C9, review
 - Central Postgres database with Supabase Auth and strict RLS membership checks
 - Atomic interview save and optimistic-lock version to prevent concurrent overwriting
 - Cross-device status sync with realtime listener (if publication enabled) and 30s polling
 - Automatic draft save after 12 seconds without edits, plus manual save and completion
 - Interview start/completion timestamps and duration in minutes for pilot timing checks
-- Seven-sheet Excel export: Persons, Interviews, Answers, Edges, Locations, Nodes, Datenqualitaet
+- Ten-sheet Excel export, including coded Gesamt_Personen, Gesamt_Netzwerk and original Codebuch
 - Gephi-compatible Node/Edge sheet headers (Id, Label, Source, Target)
 
-IMPORTANT: The questionnaire is a FIRST INSTRUMENT DRAFT based on the feedback
-notes dated 10 November 2026. The final full questionnaire was not provided.
-Do not collect real interview data until the wording and the privacy process are approved.
+QUESTIONNAIRE VERSION: `Fragebogen_NXT_Erfassung_2(1).xlsx` (Excel version of questionnaire V7, winter semester 2026/27). The A/B/C question wording, choice lists and variable coding come from P00, Listen and Codebuch. IMPORTANT: the original Excel privacy notice describes handling that differs from this web platform. The web UI explicitly flags this. University privacy/ethics review and final information/consent wording are required before real data collection.
 
 ## Setup 1: dedicated Supabase project
 
@@ -71,7 +69,7 @@ Supabase Auth + RLS. Public source code and the publishable key are not secrets.
 - `persons`: registered people / network nodes
 - `interviews`: one interview per person, version, status, timestamp, interviewer
 - `answers`: JSON interview answers (question_key, answer)
-- `edges`: directed source -> target, frequency, topics, exchange form
+- `edges`: directed source -> target, B2 topic, B3 frequency, B4 occurrence, B5 medium, B6 prior acquaintance
 - `locations`: repeated spatial activity locations per person
 
 The SQL RPC `save_interview_snapshot` saves data in one transaction. If two
@@ -99,7 +97,7 @@ silently overwriting the first. Different interviews can be edited in parallel.
 
 ## Known limits / TODO
 
-- Integrate the FINAL complete questionnaire before real interviews.
+- Confirm the V7 wording and adjust the privacy/consent text to the actual Supabase storage setup before real interviews.
 - Add individual Auth accounts and per-interviewer assignments if requested.
 - Add automated retention/deletion policy after research approval.
 - Confirm university branding usage and privacy review.
@@ -115,10 +113,15 @@ python3 -m http.server 8080
 Open `http://localhost:8080`. Without a Supabase configuration the page shows
 an installation guide (it does NOT expose an unprotected demo survey).
 
-## Source of questionnaire content
+## Questionnaire V7 and coding
 
-`Fragen zum Fragenkatalog: 10.11.2026` (feedback notes, supplied by the user):
-A1 group membership, A2 professional self-classification and organizational
-mapping question, B exchange frequency/mode/content categories including
-research, teaching, and self-governance; interview conducted together with
-respondent, interview timing to be tested, attendance tracking.
+Source: user-provided `Fragebogen_NXT_Erfassung_2(1).xlsx`. Only generic question texts, choice lists, codebook variables and the embedded non-personal campus map were used in source code. No participant names or answers from the workbook are included in GitHub.
+
+- A: consent and A1-A6 with exact choices (single selection where the Excel sheet specifies it).
+- B: full participant roster (except the respondent), B1 binary directed edge, B2 F/L/S/A, B3 1-5, B4 S/G/B, B5 P/D/B, B6 known-before-NXT; plus the separate B6 attitudinal Likert item.
+- C: C1 office, C2 locations and floor, C3/C4 weekdays, C5 arrival, C6 six room entries, C7 campus destinations, C8 maximum 3 locations, C9 five Likert statements.
+- `Gesamt_Personen` and `Gesamt_Netzwerk` follow the workbook variable names and include missing versus zero distinction for B1. The `Codebuch` sheet holds the workbook coding reference.
+- Declined participation is saved as a separate interview status and never creates a positive exchange edge. Server-side completion requires affirmative consent.
+- `sql/003_questionnaire_v7.sql` extends the existing schema without dropping the participant list or collected data. This migration has been applied to the connected NXT Supabase project.
+- To run the offline browser regression test: `python tests/questionnaire_v7_smoke.py` (requires Playwright and Chromium).
+

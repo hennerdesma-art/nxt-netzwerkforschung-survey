@@ -6,7 +6,7 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 ## 1. Supabase-Projekt einrichten
 
 1. Das separate Supabase-Projekt **NXT Netzwerkforschung** wurde in Frankfurt erstellt.
-2. Das Schema `sql/001_initial_schema.sql` und die Live-Synchronisierung sind bereits eingerichtet.
+2. Die Migrationen `sql/001_initial_schema.sql` und `sql/003_questionnaire_v7.sql` sowie die Live-Synchronisierung sind bereits eingerichtet.
 3. Unter **Authentication > Users** einen Benutzer mit einer gültigen,
    teamverwalteten E-Mail-Adresse anlegen. Als temporäres Passwort das
    getrennt mitgeteilte Team-Passwort setzen. Es steht absichtlich nirgends
@@ -42,15 +42,12 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 4. Entwurf speichern, dieselbe Website auf einem zweiten Gerät oeffnen
    und die aktualisierten Daten prüfen.
 5. Interview abschliessen und unter **Datenexport** die XLSX-Datei erzeugen.
-6. Kontrollieren, ob `Persons`, `Interviews`, `Answers`, `Edges`, `Locations`,
-   `Nodes` und `Datenqualitaet` vorhanden sind.
+6. Kontrollieren, ob `Gesamt_Personen`, `Gesamt_Netzwerk`, `Codebuch` sowie `Persons`, `Interviews`, `Answers`, `Edges`, `Locations`, `Nodes` und `Datenqualitaet` vorhanden sind.
 7. Testdaten vor dem echten Studienstart wieder entfernen.
 
 ## Wichtige Hinweise
 
-- Die aktuell eingebauten Fragen sind ein **erster Entwurf** anhand der
-  Rückmeldungen vom 10.11.2026. Der vollstaendige endgültige Fragenkatalog
-  muss vor der Datenerhebung eingearbeitet und abgestimmt werden.
+- Die Interviewmaske entspricht der hochgeladenen **Excel-Fragenbogenfassung V7** (Einwilligung, A1–A6, B1–B6, C1–C9). Die echte Verwendung setzt weiterhin die fachliche Freigabe der Fragen und eine angepasste Datenschutzerklärung voraus. Die Excel-Vorlage behauptet teilweise eine sofortige Pseudonymisierung; in der Web-App bleiben Namen für die Erhebung geschützt gespeichert.
 - Das vereinbarte Anfangspasswort **vor echten Interviews ändern** und
   moeglichst individuelle Teamkonten nutzen.
 - Ein passwortgeschuetzter Login ist kein Datenschutzkonzept. Speicherung,

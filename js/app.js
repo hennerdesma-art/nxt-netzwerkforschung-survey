@@ -6,7 +6,7 @@
   const root = document.getElementById('app');
   const state = {
     db: null, user: null, member: null, people: [], interviews: [], edges: [], locations: [],
-    route: 'dashboard', query: '', filter: 'all', form: null, step: 0, busy: false,
+    route: 'dashboard', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
     channel: null, poll: null, modal: '', draftDirty: false
   };
   const I = {
@@ -42,7 +42,7 @@
   const personName = id => state.people.find(p=>p.id===id)?.full_name || 'Unbekannte Person';
   const personCode = id => state.people.find(p=>p.id===id)?.code || 'UNKNOWN';
   const statusFor = id => state.interviews.find(i=>i.person_id===id)?.status || 'planned';
-  const badge = status => ({completed:'<span class="pill green">Abgeschlossen</span>',in_progress:'<span class="pill orange">In Bearbeitung</span>',planned:'<span class="pill gray">Offen</span>'}[status] || '<span class="pill gray">Offen</span>');
+  const badge = status => ({completed:'<span class="pill green">Durchgeführt</span>',declined:'<span class="pill gray">Abgelehnt</span>',in_progress:'<span class="pill orange">In Bearbeitung</span>',planned:'<span class="pill gray">Offen</span>'}[status] || '<span class="pill gray">Offen</span>');
   function toast(msg,type='info'){
     const box=document.createElement('div');box.className='toast '+(type==='error'?'error':type==='success'?'success':'');box.textContent=msg;
     document.getElementById('toast-region').append(box);setTimeout(()=>box.remove(),6500);
@@ -98,8 +98,8 @@
   }
   function counts(){
     const total=state.people.length,done=state.interviews.filter(i=>i.status==='completed').length,
-      ongoing=state.interviews.filter(i=>i.status==='in_progress').length;
-    return {total,done,ongoing,pending:Math.max(0,total-done-ongoing),edges:state.edges.length,progress:total?Math.round(done/total*100):0};
+      ongoing=state.interviews.filter(i=>i.status==='in_progress').length,declined=state.interviews.filter(i=>i.status==='declined').length;
+    return {total,done,ongoing,declined,pending:Math.max(0,total-done-ongoing-declined),edges:state.edges.length,progress:total?Math.round(done/total*100):0};
   }
   const tabs=[['dashboard','layout','Dashboard'],['people','users','Personen'],['interviews','clipboard','Interviews'],['network','network','Netzwerk'],['export','download','Datenexport']];
   function shell(page){
@@ -123,7 +123,7 @@
     const recent=[...state.interviews].filter(i=>i.started_at).sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
     const top=`${icon('plus',16)} Interview starten`;
     return `<section class="hero"><div class="hero-copy"><div class="eyebrow">NXT | Forschungsdashboard</div><h1>Netzwerke verstehen.<br>Zusammenh\u00e4nge entdecken.</h1><p>Die zentrale Arbeitsoberfl\u00e4che f\u00fcr eure Interviewerhebung: strukturiert, transparent und team\u00fcbergreifend.</p><button class="btn" data-action="navigate" data-route="people">${top} ${icon('arrow')}</button></div><div class="hero-ring"><div><strong>${c.progress}%</strong><small>abgeschlossen</small></div></div></section>
-    <div class="stat-grid">${stat('Erfasste Personen',c.total,`Projektziel: ca. ${target} Personen`,'users')}${stat('Abgeschlossene Interviews',c.done,'Vollst\u00e4ndig dokumentiert','check')}${stat('In Bearbeitung',c.ongoing,`${c.pending} noch nicht begonnen`,'clock')}${stat('Fachliche Kanten',c.edges,'Gerichtete Austauschbeziehungen','network')}</div>
+    <div class="stat-grid">${stat('Erfasste Personen',c.total,`Projektziel: ca. ${target} Personen`,'users')}${stat('Abgeschlossene Interviews',c.done,'Vollst\u00e4ndig dokumentiert','check')}${stat('In Bearbeitung',c.ongoing,`${c.pending} offen · ${c.declined} abgelehnt`,'clock')}${stat('Fachliche Kanten',c.edges,'Gerichtete Austauschbeziehungen','network')}</div>
     <div class="dash-grid"><div class="panel"><div class="panel-inner"><div class="panel-head"><div><h2>Interviewfortschritt</h2><small>Aktueller Stand der Erhebung</small></div><span class="pill">${c.progress}% Fortschritt</span></div><div class="progress-row"><span class="progress-row-title">Abgeschlossen</span><div class="progress-track"><div class="progress-fill" style="width:${c.total?100*c.done/c.total:0}%"></div></div><strong>${c.done}</strong></div><div class="progress-row"><span class="progress-row-title">In Bearbeitung</span><div class="progress-track"><div class="progress-fill" style="width:${c.total?100*c.ongoing/c.total:0}%;background:#e0aa56"></div></div><strong>${c.ongoing}</strong></div><div class="progress-row"><span class="progress-row-title">Offen</span><div class="progress-track"><div class="progress-fill" style="width:${c.total?100*c.pending/c.total:0}%;background:#aac3c8"></div></div><strong>${c.pending}</strong></div><div class="notice-box" style="margin-top:26px">${icon('info')}<span>${c.total===0?'Beginnt mit dem Anlegen oder Importieren eurer Personenliste.':`Aktuell sind ${c.done} von ${c.total} Personen abgeschlossen. Beim Erfassen werden neue Kanten zentral gespeichert.`}</span></div></div></div>
     <div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Letzte Interviews</h2><button class="text-link" data-action="navigate" data-route="interviews">Alle ansehen</button></div>${recent.length?`<div class="activity-list">${recent.map(i=>`<div class="activity-entry"><span class="activity-bubble">${esc(initials(personName(i.person_id)))}</span><div style="min-width:0"><strong>${esc(personName(i.person_id))}</strong><small>${fmtTime(i.updated_at)}</small></div>${badge(i.status)}</div>`).join('')}</div>`:empty('Noch keine Interviews','Hier erscheinen eure letzten erhobenen Interviews.','clipboard')}</div></div></div>`;
   }
@@ -138,19 +138,19 @@
     });
   }
   function renderPeople(){
-    return pageHead('Personenverzeichnis','Alle Personen im \u00dcberblick','Alle Mitarbeiterinnen und Mitarbeiter sowie ihre Interview- und Standortdaten.',`<button class="btn btn-light" data-action="import-people">${icon('upload')} Liste importieren</button><button class="btn btn-primary" data-action="add-person">${icon('plus')} Neue Person</button>`)+`<div class="panel"><div class="toolbar"><div class="search-wrap">${icon('search')}<input id="people-search" class="search-input" type="search" placeholder="Person oder Geb\u00e4ude suchen ..." value="${esc(state.query)}" aria-label="Personen suchen"></div><select id="people-filter" class="filter-select" aria-label="Interviewstatus filtern"><option value="all" ${state.filter==='all'?'selected':''}>Alle Status</option><option value="planned" ${state.filter==='planned'?'selected':''}>Offen</option><option value="in_progress" ${state.filter==='in_progress'?'selected':''}>In Bearbeitung</option><option value="completed" ${state.filter==='completed'?'selected':''}>Abgeschlossen</option></select><span class="muted small" id="people-count">${filteredPeople().length} Personen</span></div><div id="people-list">${renderPeopleTable(filteredPeople())}</div></div>`;
+    return pageHead('Personenverzeichnis','Alle Personen im \u00dcberblick','Alle Mitarbeiterinnen und Mitarbeiter sowie ihre Interview- und Standortdaten.',`<button class="btn btn-light" data-action="import-people">${icon('upload')} Liste importieren</button><button class="btn btn-primary" data-action="add-person">${icon('plus')} Neue Person</button>`)+`<div class="panel"><div class="toolbar"><div class="search-wrap">${icon('search')}<input id="people-search" class="search-input" type="search" placeholder="Person oder Geb\u00e4ude suchen ..." value="${esc(state.query)}" aria-label="Personen suchen"></div><select id="people-filter" class="filter-select" aria-label="Interviewstatus filtern"><option value="all" ${state.filter==='all'?'selected':''}>Alle Status</option><option value="planned" ${state.filter==='planned'?'selected':''}>Offen</option><option value="in_progress" ${state.filter==='in_progress'?'selected':''}>In Bearbeitung</option><option value="completed" ${state.filter==='completed'?'selected':''}>Durchgeführt</option><option value="declined" ${state.filter==='declined'?'selected':''}>Abgelehnt</option></select><span class="muted small" id="people-count">${filteredPeople().length} Personen</span></div><div id="people-list">${renderPeopleTable(filteredPeople())}</div></div>`;
   }
   function renderInterviews(){
     const records=state.people.map(p=>({p,i:state.interviews.find(i=>i.person_id===p.id)}))
-      .sort((a,b)=>({'in_progress':0,'planned':1,'completed':2}[a.i?.status||'planned'])-({'in_progress':0,'planned':1,'completed':2}[b.i?.status||'planned']));
+      .sort((a,b)=>({'in_progress':0,'planned':1,'completed':2,'declined':3}[a.i?.status||'planned'])-({'in_progress':0,'planned':1,'completed':2,'declined':3}[b.i?.status||'planned']));
     return pageHead('Erhebung','Interview\u00fcbersicht','Starte neue Gespr\u00e4che, setze Entw\u00fcrfe fort und pr\u00fcfe abgeschlossene Datens\u00e4tze.',`<button class="btn btn-primary" data-action="navigate" data-route="people">${icon('plus')} Interview starten</button>`)+`<div class="panel">${records.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Bearbeitung</th><th>Letzte Aktualisierung</th><th>Status</th><th>Aktion</th></tr></thead><tbody>${records.map(({p,i})=>`<tr><td><div class="person-cell"><span class="person-avatar">${esc(initials(p.full_name))}</span><div><strong>${esc(p.full_name)}</strong><small>${esc(p.code)}</small></div></div></td><td>${esc(i?.interviewer_name||'\u2014')}</td><td>${fmtTime(i?.updated_at)}</td><td>${badge(i?.status)}</td><td><button class="btn btn-light btn-sm" data-action="open-interview" data-person="${esc(p.id)}">${i?'Fortsetzen':'Beginnen'} ${icon('chevron',14)}</button></td></tr>`).join('')}</tbody></table></div>`:empty('Personenliste noch leer','Zuerst m\u00fcssen die Interviewpersonen angelegt oder importiert werden.','clipboard','<button class="btn btn-primary" data-action="navigate" data-route="people">Zum Personenverzeichnis</button>')}</div>`;
   }
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
   const selectField = (label,field,items,value,extra='') => `<div class="field"><label>${label}</label><select data-field="${field}" ${extra}>${items.map(([key,name])=>option(key,name,value)).join('')}</select></div>`;
   const textField = (label,field,value,placeholder='',extra='') => `<div class="field"><label>${label}</label><input type="text" data-field="${field}" value="${esc(value||'')}" placeholder="${esc(placeholder)}" ${extra}></div>`;
-  const stepNames=['Person & Einordnung','Fachlicher Austausch','R\u00e4umliche Daten','Pr\u00fcfen & Speichern'];
+  const stepNames=['Einwilligung & Teil A','Teil B · Austausch','Teil C · Wege & Orte','Kontrolle & Abschluss'];
   const groups=[['','Bitte ausw\u00e4hlen'],['Professor:innen','Professor:innen'],['Wissenschaftliche Mitarbeitende','Wissenschaftliche Mitarbeitende'],['Technische Mitarbeitende','Technische Mitarbeitende (Laborassistenz usw.)'],['Sonstige','Sonstige / unklar']];
-  const buildings=[['','Bitte ausw\u00e4hlen'],['5','Geb\u00e4ude 5'],['16','Geb\u00e4ude 16'],['17','Geb\u00e4ude 17'],['21','Geb\u00e4ude 21'],['D','Geb\u00e4ude D'],['Werk150','Werk150'],['Sonstiger Standort','Sonstiger Standort']];
+  const buildings=[['','Bitte ausw\u00e4hlen'],['5','Geb\u00e4ude 5'],['16','Geb\u00e4ude 16'],['17','Geb\u00e4ude 17'],['21','Geb\u00e4ude 21'],['D','Geb\u00e4ude D'],['Werk150','Werk150'],['Sonstiger Standort','Sonstiger Standort'],['anderes Gebäude','anderes Gebäude']];
   const frequencies=[['','Bitte ausw\u00e4hlen'],['taeglich','T\u00e4glich'],['woechentlich','Mehrmals / einmal w\u00f6chentlich'],['monatlich','Monatlich'],['seltener','Seltener'],['unbekannt','Noch offen']];
   const modes=[['','Bitte ausw\u00e4hlen'],['persoenlich','Pers\u00f6nlich'],['digital','Digital'],['beides','Pers\u00f6nlich und digital'],['sonstiges','Sonstiges']];
   const topics=[['Forschung','Forschung'],['Lehre','Lehre'],['Selbstverwaltung','Selbstverwaltung']];
@@ -183,63 +183,132 @@
         interviewer_name:interview.interviewer_name||'',interview_notes:interview.notes||'',
         role_group:p.role_group||'',professional_title:p.professional_title||'',unit:p.unit||'',
         building:p.building||'',room:p.room||'',answers,
-        edges:results[1].data.map(e=>({target_person_id:e.target_person_id,frequency:e.frequency||'',topics:e.topics||[],exchange_mode:e.exchange_mode||'',note:e.note||''})),
-        locations:results[2].data.map(l=>({building:l.building,place:l.place||'',frequency:l.frequency||'',notes:l.notes||''}))};
-      state.route='interview';state.step=0;state.draftDirty=false;render();window.scrollTo(0,0);
+        edges:results[1].data.map(e=>({target_person_id:e.target_person_id,frequency:e.frequency||'',topics:e.topics||[],exchange_mode:e.exchange_mode||'',exchange_medium:e.exchange_medium||'',known_before_nxt:e.known_before_nxt??null,note:e.note||''})),
+        locations:Array.from({length:Math.max(6,results[2].data.length)},(_,i)=>{const l=results[2].data[i]||{};return {building:l.building||'',place:l.place||'',frequency:l.frequency||'',notes:l.notes||''};})};
+      state.peerQuery='';state.peerOnly=false;state.route='interview';state.step=0;state.draftDirty=false;render();window.scrollTo(0,0);
     }catch(e){toast('Interview konnte nicht geladen werden: '+(e.message||e),'error');}
     finally{state.busy=false;}
   }
-  function formStepA(){const f=state.form;
-    return `<div class="form-title"><div><span class="eyebrow">Abschnitt A / 01</span><h2>Person und Einordnung</h2><p>Zuordnung und berufliche Selbstbezeichnung der befragten Person.</p></div><span class="pill orange">Fragenfassung vorl\u00e4ufig</span></div>
-    <div class="notice-box warn">${icon('alert')}<span>Diese erste Maske basiert auf den R\u00fcckmeldungen vom 10.11.2026. Die exakte Formulierung des vollst\u00e4ndigen Fragenkatalogs muss noch \u00fcbernommen werden.</span></div>
-    <div class="question"><span class="question-num">A1 &middot; ZUGEH\u00d6RIGKEIT</span><h3>Welcher Mitarbeitergruppe der Fakult\u00e4t NXT ordnen Sie sich zu?</h3><p>Einfachauswahl, entsprechend der \u00dcberarbeitung des Fragebogens.</p>${selectField('Mitarbeitergruppe', 'role_group',groups,f.role_group)}</div>
-    <div class="question"><span class="question-num">A2 &middot; BERUFLICHE SELBSTBEZEICHNUNG</span><h3>Welche berufliche Selbstbezeichnung w\u00fcrden Sie sich geben?</h3><div class="field-grid">${textField('Berufliche Selbstbezeichnung','professional_title',f.professional_title,'z. B. wissenschaftliche Mitarbeit')}${textField('Bereich / organisatorische Zuordnung','unit',f.unit,'z. B. Labor, Werk150, Verwaltung')}</div><p style="margin-top:10px">Die genaue Abgrenzung zwischen Werk150, Laboren und weiteren Einheiten ist noch abzustimmen.</p></div>
-    <div class="question"><span class="question-num">INTERVIEWMETADATEN</span><h3>Wer f\u00fchrt das Gespr\u00e4ch?</h3>${textField('Name des Interviewers / der Interviewerin','interviewer_name',f.interviewer_name,'Name der erhebenden Person')}</div>`;
+  // Questionnaire V7: question wording, answer options and codes are sourced from
+  // Fragebogen_NXT_Erfassung_2.xlsx (template P00, Listen, Codebuch).
+  const Q = window.NXT_QUESTIONNAIRE || {};
+  const qChoice = (key, label, options, value, hint='') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><select id="q-${esc(key)}" data-answer="${esc(key)}">${option('','Bitte auswählen',value)}${options.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return option(v,l,value);}).join('')}</select>${hint?`<small class="field-hint">${esc(hint)}</small>`:''}</div>`;
+  const qText = (key,label,value,hint='',inputType='text') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><input id="q-${esc(key)}" data-answer="${esc(key)}" type="${inputType}" value="${esc(value??'')}" placeholder="${esc(hint)}"></div>`;
+  const qQuestion = (num,question,content,note='') => `<section class="question q-question"><span class="question-num">${esc(num)}</span><h3>${esc(question)}</h3>${note?`<p class="q-question-note">${esc(note)}</p>`:''}<div class="q-question-controls">${content}</div></section>`;
+  const qToggle = (key,label,checked,sub='') => `<label class="q-toggle"><input type="checkbox" data-answer="${esc(key)}" ${checked?'checked':''}><span><strong>${esc(label)}</strong>${sub?`<small>${esc(sub)}</small>`:''}</span></label>`;
+  const qScale = (key,question,answer) => `<div class="q-scale"><div class="q-scale-title">${esc(question)}</div>${qChoice(key,'Ihre Einschätzung',Q.likert,answer)}</div>`;
+  const qHead = (num,title,description) => `<div class="form-title"><div><span class="eyebrow">${esc(Q.version||'FRAGEBOGEN V7')} · ${num}</span><h2>${esc(title)}</h2><p>${esc(description)}</p></div><span class="pill">${num}</span></div>`;
+  const consentYes = (v) => String(v||'').startsWith('Ja,');
+  const consentNo = (v) => String(v||'').startsWith('Nein,');
+  const qAnswer = (key) => state.form?.answers?.[key] ?? '';
+  const qCountC8 = () => (Q.encountersC8||[]).filter(([k])=>state.form?.answers?.['C8_'+k]===true).length;
+  const qMissingB = () => state.form.edges.filter(e=>!e.frequency||!e.exchange_mode||!e.exchange_medium||!(e.topics||[]).length||e.known_before_nxt===null||e.known_before_nxt===undefined).length;
+  function formStepA(){
+    const f=state.form, a=f.answers, consent=a.Einwilligung;
+    const greeting=(Q.greeting||[]).map(txt=>`<p>${esc(txt)}</p>`).join('');
+    const isDeclined=consentNo(consent);
+    return `${qHead('EINLEITUNG & TEIL A','Angaben zu Ihrer Person','Einwilligung sowie die Fragen A1 bis A6 aus der Excel-Vorlage.')}
+    <div class="q-intro"><span class="eyebrow">Befragung · Wintersemester 2026/27</span><h3>${esc(Q.title)}</h3>${greeting}
+      <div class="q-intro-parts"><span><strong>A</strong> Angaben zur Person</span><span><strong>B</strong> Fachlicher Austausch</span><span><strong>C</strong> Wege und Orte</span></div>
+      <p><strong>Kontakt bei Fragen:</strong> ${esc(Q.projectContact||'').replace(/\n/g,' · ')}</p>
+      <p><strong>Betreuung:</strong> ${esc(Q.supervision||'').replace(/\n/g,' · ')}</p>
+    </div>
+    <div class="notice-box warn q-privacy">${icon('alert')}<span><strong>Datenschutzhinweis für die Web-Version:</strong> Diese Plattform speichert die Personenliste und die Antworten geschützt in Supabase. Die Formulierung der Excel-Vorlage zur unmittelbaren Pseudonymisierung und Aufbewahrung ist daher nicht ohne Anpassung gültig. Die Forschungsinformation und die Freigabe durch die Hochschule sind vor der echten Erhebung zu prüfen.</span></div>
+    ${qQuestion('EINWILLIGUNG',Q.consent_question,qChoice('Einwilligung','Ihre Antwort',Q.consent_options,consent))}
+    ${isDeclined?`<div class="notice-box warn">${icon('info')}<span>Teilnahme abgelehnt. Es werden keine weiteren Antworten erhoben. Am Ende bitte „Ablehnung dokumentieren“ wählen.</span></div>`:`
+    ${qQuestion('A1',Q.questionsA.A1,qChoice('A1_Gruppe','Ihre Antwort',Q.groups,a.A1_Gruppe))}
+    ${qQuestion('A2',Q.questionsA.A2,qChoice('A2_Kategorie','Ihre Antwort (Einfachauswahl)',Q.categories,a.A2_Kategorie))}
+    ${qQuestion('A3',Q.questionsA.A3,qText('A3_Selbstbezeichnung','Ihre Antwort (Freitext)',a.A3_Selbstbezeichnung))}
+    ${qQuestion('A4',Q.questionsA.A4,qChoice('A4_Alter','Ihre Antwort',Q.ages,a.A4_Alter))}
+    ${qQuestion('A5',Q.questionsA.A5,qChoice('A5_Geschlecht','Ihre Antwort',Q.genders,a.A5_Geschlecht))}
+    ${qQuestion('A6',Q.questionsA.A6,`<div class="field-grid">${qChoice('A6_vor_NXT','Ihre Antwort',Q.yesno,a.A6_vor_NXT)}${qText('A6_seit','Ja, seit:',a.A6_seit,'Nur bei „Ja“ ausfüllen')}</div>`)}
+    `}
+    <section class="question"><span class="question-num">VOM PROJEKTTEAM AUSZUFÜLLEN</span><div class="field-grid">
+    ${qText('Interview_Nr','Interview-Nr.',a.Interview_Nr,'z. B. 07')}
+    <div class="field"><label>Kürzel der interviewenden Person</label><input data-field="interviewer_name" type="text" value="${esc(f.interviewer_name||'')}" placeholder="z. B. NW"></div>
+    ${qText('Datum','Datum',a.Datum,'','date')}</div></section>`;
   }
-  function edgeCard(edge,index){
-    const others=state.people.filter(p=>p.id!==state.form.personId);
-    return `<div class="edge-row" data-edge-index="${index}"><div class="edge-row-head"><strong>Fachliche Verbindung ${index+1}</strong><button type="button" class="btn btn-danger btn-sm" data-action="delete-edge" data-index="${index}" title="Verbindung entfernen">${icon('trash',14)} Entfernen</button></div>
-      <div class="field field-full"><label>Austauschpartner:in</label><select data-edge-field="target_person_id" data-index="${index}">${option('','Person ausw\u00e4hlen',edge.target_person_id)}${others.map(p=>option(p.id,p.full_name+' ('+p.code+')',edge.target_person_id)).join('')}</select></div>
-      <div class="field"><label>H\u00e4ufigkeit des Austauschs</label><select data-edge-field="frequency" data-index="${index}">${frequencies.map(x=>option(...x,edge.frequency)).join('')}</select></div>
-      <div class="field"><label>Form des Austauschs</label><select data-edge-field="exchange_mode" data-index="${index}">${modes.map(x=>option(...x,edge.exchange_mode)).join('')}</select></div>
-      <div class="field field-full"><span class="field-label">Inhalt des Austauschs (Mehrfachnennung)</span><div class="check-tiles">${topics.map(([id,name])=>`<label class="check-tile"><input type="checkbox" data-topic="${id}" data-index="${index}" ${(edge.topics||[]).includes(id)?'checked':''}>${name}</label>`).join('')}</div></div>
-      <div class="field field-full"><label>Erg\u00e4nzungen / konkreter Austauschinhalt</label><input type="text" data-edge-field="note" data-index="${index}" placeholder="Optionaler Kommentar" value="${esc(edge.note||'')}"></div></div>`;
+  function qPeerCard(p){
+    const idx=state.form.edges.findIndex(e=>e.target_person_id===p.id),selected=idx>=0;
+    const edge=selected?state.form.edges[idx]:null;
+    const opts=(field,label,choices,val)=>`<div class="field"><label>${esc(label)}</label><select data-edge-field="${field}" data-index="${idx}">${option('','Bitte auswählen',val)}${choices.map(([k,v])=>option(k,`${k} – ${v}`,val)).join('')}</select></div>`;
+    return `<article class="q-peer ${selected?'selected':''}" data-peer-id="${esc(p.id)}"><div class="q-peer-main"><button type="button" class="q-peer-select" data-action="toggle-peer" data-person="${esc(p.id)}" aria-pressed="${selected}"><span class="q-peer-check">${selected?icon('check',15):''}</span><span class="q-peer-name"><strong>${esc(p.full_name)}</strong><small>${esc(p.code)} · B1 ${selected?'x':'nicht angekreuzt'}</small></span></button><span class="pill ${selected?'green':'gray'}">${selected?'Austausch':'–'}</span></div>
+      ${selected?`<div class="q-peer-fields"><div class="q-peer-help">Bitte B2 bis B6 nur für angekreuzte Personen ausfüllen.</div>
+      ${opts('topics_single','B2 · Inhalt der Gespräche',Q.b2,(edge.topics||[])[0]||'')}
+      ${opts('frequency','B3 · Wie oft?',Q.b3,edge.frequency)}
+      ${opts('exchange_mode','B4 · Zustandekommen',Q.b4,edge.exchange_mode)}
+      ${opts('exchange_medium','B5 · Medium',Q.b5,edge.exchange_medium)}
+      ${opts('known_before_nxt','B6 · Kannte ich schon vor NXT?',[['true','Ja'],['false','Nein']],edge.known_before_nxt===null||edge.known_before_nxt===undefined?'':String(edge.known_before_nxt))}
+      <div class="field"><label>Interne Anmerkung (optional)</label><input type="text" data-edge-field="note" data-index="${idx}" value="${esc(edge.note||'')}"></div></div>`:''}</article>`;
   }
-  function formStepB(){const f=state.form;
-    return `<div class="form-title"><div><span class="eyebrow">Abschnitt B / 02</span><h2>Fachlicher Austausch</h2><p>Gerichtete Netzwerkbeziehungen: Wer tauscht sich mit wem inhaltlich aus?</p></div><span class="pill">Kanten erfassen</span></div>
-      <div class="notice-box">${icon('network')}<span>Es werden nur die von dieser Person genannten Beziehungen erfasst (<strong>Quelle \u2192 Ziel</strong>). Eine Gegenrichtung wird nicht automatisch angelegt. M\u00f6gliche Inhalte: Forschung, Lehre und Selbstverwaltung.</span></div>
-      <div class="question"><span class="question-num">B1 &middot; AUSTAUSCHPARTNER</span><h3>Mit welchen Personen findet regelm\u00e4\u00dfig oder gelegentlich fachlicher Austausch statt?</h3><p>F\u00fcr jede genannte Person eine Verbindung anlegen; Frequenz, Art und Inhalt erfassen.</p><div style="margin-top:19px">${f.edges.length?f.edges.map(edgeCard).join(''):empty('Noch keine Kanten erfasst','Erfasse die erste Austauschbeziehung oder markiere ausdr\u00fccklich, dass keine besteht.','network')}</div><button type="button" class="btn btn-light" data-action="add-edge">${icon('plus')} Austauschpartner hinzuf\u00fcgen</button></div>
-      <div class="question"><label class="check-tile"><input type="checkbox" data-answer="no_exchange" ${f.answers.no_exchange?'checked':''}>Die befragte Person nennt keine fachlichen Austauschpartner</label><p style="margin-top:9px">Bewusst keine Austauschpartner = 0 Kanten, nicht dasselbe wie fehlende Antworten.</p></div>`;
+  function renderPeerResults(){
+    const q=clean(state.peerQuery).toLocaleLowerCase('de');let others=state.people.filter(p=>p.id!==state.form.personId).sort((x,y)=>x.code.localeCompare(y.code,undefined,{numeric:true}));
+    if(q)others=others.filter(p=>`${p.code} ${p.full_name}`.toLocaleLowerCase('de').includes(q));
+    if(state.peerOnly)others=others.filter(p=>state.form.edges.some(e=>e.target_person_id===p.id));
+    return others.length?others.map(qPeerCard).join(''):'<div class="q-peer-empty">Keine Personen für diesen Filter gefunden.</div>';
   }
-  function locationCard(loc,index){return `<div class="location-row"><div class="edge-row-head"><strong>Weiterer Aufenthaltsort ${index+1}</strong><button class="btn btn-danger btn-sm" type="button" data-action="delete-location" data-index="${index}">${icon('trash',14)} Entfernen</button></div>
-    <div class="field"><label>Geb\u00e4ude / Standort</label><select data-location-field="building" data-index="${index}">${buildings.map(x=>option(...x,loc.building)).join('')}</select></div>
-    <div class="field"><label>Ort / Raum</label><input type="text" value="${esc(loc.place||'')}" data-location-field="place" data-index="${index}" placeholder="z. B. Labor, Cafeteria"></div>
-    <div class="field"><label>Aufenthaltsh\u00e4ufigkeit</label><select data-location-field="frequency" data-index="${index}">${frequencies.map(x=>option(...x,loc.frequency)).join('')}</select></div>
-    <div class="field"><label>Bemerkung</label><input type="text" value="${esc(loc.notes||'')}" data-location-field="notes" data-index="${index}" placeholder="Optional"></div></div>`;}
-  function formStepC(){const f=state.form;
-    return `<div class="form-title"><div><span class="eyebrow">Abschnitt C / 03</span><h2>R\u00e4umliche Daten</h2><p>Arbeitsort, B\u00fcro und weitere relevante Aufenthaltsorte.</p></div><span class="pill">R\u00e4umliches Netzwerk</span></div>
-    <div class="question"><span class="question-num">C1 &middot; HAUPTARBEITSPLATZ</span><h3>Wo befindet sich der regul\u00e4re Arbeitsplatz?</h3><div class="field-grid">${selectField('Geb\u00e4ude', 'building',buildings,f.building)}${textField('B\u00fcro / Raum','room',f.room,'z. B. 111 oder R111')}</div></div>
-    <div class="question"><span class="question-num">C2 &middot; WEITERE AUFENTHALTSORTE</span><h3>Welche weiteren Orte werden im Arbeitsalltag aufgesucht?</h3><p>Optional: Weitere Standorte und Aufenthaltsfrequenzen. Wegl\u00e4ngen werden sp\u00e4ter aus dem Geb\u00e4ude- und Raumplan bestimmt und hier nicht gesch\u00e4tzt.</p><div style="margin-top:20px">${f.locations.map(locationCard).join('')}</div><button type="button" class="btn btn-light" data-action="add-location">${icon('plus')} Aufenthaltsort hinzuf\u00fcgen</button></div>`;
+  function formStepB(){
+    const f=state.form,a=f.answers;
+    if(consentNo(a.Einwilligung))return `${qHead('TEIL B','Fachlicher Austausch','Teilnahme wurde abgelehnt.')}<div class="notice-box warn">Bitte nur die Ablehnung dokumentieren.</div>`;
+    return `${qHead('TEIL B','Ihr fachlicher Austausch','Netzwerkbogen B1–B6: alle Personen der Shortlist durchgehen.')}
+    <div class="notice-box">${icon('info')}<span>${esc(Q.b_intro)}</span></div>
+    <div class="q-instructions">${(Q.b_instruction||[]).map(text=>`<div>${esc(text)}</div>`).join('')}</div>
+    <div class="q-code-legend">${Object.values(Q.b_explanations).map(text=>`<p>${esc(text)}</p>`).join('')}</div>
+    ${qQuestion('B1–B6','Fachlicher Austausch in den letzten 6 Monaten',`<div class="q-peer-toolbar"><div class="q-peer-stats"><strong>${f.edges.length}</strong> von ${Math.max(0,state.people.length-1)} Beziehungen markiert ${qMissingB()?`<span class="pill orange">${qMissingB()} unvollständig</span>`:''}</div>
+      <div class="q-peer-filters"><div class="search-wrap">${icon('search')}<input id="peer-search" class="search-input" type="search" placeholder="Person / P-ID suchen" value="${esc(state.peerQuery||'')}" aria-label="Austauschpartner suchen"></div>
+      <label class="q-peer-only"><input id="peer-only" type="checkbox" ${state.peerOnly?'checked':''}> Nur angekreuzte</label></div></div>
+      <div id="peer-results" class="q-peer-list">${renderPeerResults()}</div>
+      ${qToggle('no_exchange','Keine fachlichen Austauschpartner genannt',Boolean(a.no_exchange),'Nur markieren, wenn dies ausdrücklich bestätigt wurde.')}
+    `)}
+    ${qQuestion('B6 · EINSCHÄTZUNG','Wie sehr trifft die folgende Aussage auf Sie zu?',qScale('B_Aussage_Austausch_wichtig',Q.b_attitude,a.B_Aussage_Austausch_wichtig),'Die Excel-Vorlage verwendet B6 sowohl in der Netzwerkmatrix als auch für diese Aussage.')}`;
   }
-  function formStepD(){const f=state.form;const per=state.people.find(x=>x.id===f.personId);
-    const isNone=Boolean(f.answers.no_exchange);
-    return `<div class="form-title"><div><span class="eyebrow">Abschnitt D / 04</span><h2>Pr\u00fcfen und abschlie\u00dfen</h2><p>Kontrolliere die Angaben und speichere das Interview zentral.</p></div><span class="pill">Version ${f.version}</span></div>
-    <div class="summary-grid"><div class="summary-item"><strong>1</strong><small>Interviewperson</small></div><div class="summary-item"><strong>${f.edges.filter(e=>e.target_person_id).length}</strong><small>Fachliche Kanten</small></div><div class="summary-item"><strong>${f.locations.filter(l=>l.building).length}</strong><small>Weitere Orte</small></div></div>
-    <div class="review-row"><span>Person</span><strong>${esc(per?.full_name)}</strong></div>
-    <div class="review-row"><span>Mitarbeitergruppe</span><strong>${esc(f.role_group||'Noch nicht erfasst')}</strong></div>
-    <div class="review-row"><span>Berufliche Selbstbezeichnung</span><strong>${esc(f.professional_title||'Noch nicht erfasst')}</strong></div>
-    <div class="review-row"><span>Arbeitsplatz</span><strong>${esc([f.building?`Geb. ${f.building}`:'',f.room?`Raum ${f.room}`:''].filter(Boolean).join(', ')||'Noch nicht erfasst')}</strong></div>
-    <div class="review-row"><span>Fachlicher Austausch</span><strong>${f.edges.filter(e=>e.target_person_id).length} Kanten${isNone?' (keine angegeben)':''}</strong></div>
-    <div class="review-row"><span>Interviewer:in</span><strong>${esc(f.interviewer_name||'Noch nicht erfasst')}</strong></div>
-    <div class="review-row"><span>Interviewbeginn</span><strong>${fmtTime(f.started_at)}</strong></div>
-    <div class="field" style="margin-top:21px"><label>Notizen zum Interview</label><textarea data-field="interview_notes" placeholder="Offene Fragen, Unklarheiten, Hinweise zur Interviewdauer ...">${esc(f.interview_notes||'')}</textarea></div>
-    <div class="notice-box ${!f.role_group||(!isNone&&!f.edges.length)?'warn':''}" style="margin-top:20px">${icon('info')}<span>${!f.role_group?'Die Mitarbeitergruppe fehlt noch. Du kannst einen Entwurf sichern oder die Angabe erg\u00e4nzen.':!isNone&&!f.edges.length?'Es sind weder Austauschbeziehungen noch die Option \u201ekein Austausch\u201c markiert.':'Die Daten k\u00f6nnen als Entwurf gespeichert oder als abgeschlossen markiert werden.'}</span></div>`;
+  const qYesNo = [['ja','ja'],['nein','nein']];
+  function formStepC(){
+    const f=state.form,a=f.answers;
+    if(consentNo(a.Einwilligung))return `${qHead('TEIL C','Ihre Wege und Orte','Teilnahme wurde abgelehnt.')}<div class="notice-box warn">Bitte nur die Ablehnung dokumentieren.</div>`;
+    const days=(prefix)=>`<div class="q-day-grid">${Q.weekdays.map(([k,name])=>qToggle(`${prefix}_${k}`,name,Boolean(a[`${prefix}_${k}`]))).join('')}</div>`;
+    const places=(entries,prefix,withDetail)=>`<div class="q-places-list">${entries.map(([key,label])=>`<div class="q-place-row"><div>${esc(label)}</div><div>${qChoice(`${prefix}_${key}`,'ja / nein',qYesNo,a[`${prefix}_${key}`])}</div>${withDetail?`${qText(`${prefix}_${key}_Etage`,'Etage / Flur',a[`${prefix}_${key}_Etage`])}`:''}</div>`).join('')}</div>`;
+    const c6=`<div class="q-c6-list">${Array.from({length:6},(_,i)=>{const l=f.locations[i]||{};return `<div class="q-c6-row"><span class="q-row-num">Eintrag ${i+1}</span><div class="field"><label>Gebäude</label><select data-location-field="building" data-index="${i}">${option('','Bitte auswählen',l.building)}${Q.buildings.map(k=>option(k,k,l.building)).join('')}</select></div><div class="field"><label>Raum</label><input type="text" data-location-field="place" data-index="${i}" value="${esc(l.place||'')}" placeholder="Raum"></div></div>`;}).join('')}</div>`;
+    const c7=`<div class="q-places-list">${Q.placesC7.map(([k,label])=>`<div class="q-place-row"><div>${esc(label)}</div>${qChoice('C7_'+k,'ja / nein',qYesNo,a['C7_'+k])}${k==='Sonstige'?qText('C7_Sonstige_Text','Anderer Ort',a.C7_Sonstige_Text):''}</div>`).join('')}</div>`;
+    const c8=`<div class="q-encounter-header"><span>${qCountC8()} / 3 ausgewählt</span><small>Maximal 3 Kreuze</small></div><div class="q-choice-grid">${Q.encountersC8.map(([key,label])=>qToggle('C8_'+key,label,Boolean(a['C8_'+key]))).join('')}</div>${qText('C8_Sonstige_Text','Sonstige Gebäude / Raum',a.C8_Sonstige_Text)}`;
+    const c9=`<div class="q-likert-stack">${Q.statementsC9.map((text,i)=>qScale('C9_'+(i+1),text,a['C9_'+(i+1)])).join('')}</div>`;
+    const master=state.people.find(x=>x.id===f.personId);
+    return `${qHead('TEIL C','Ihre Wege und Orte auf dem Campus','Fragen C1–C9 gemäß Excel-Vorlage.')}
+      <div class="notice-box">${icon('location')}<span>${esc(Q.c_intro)}</span></div>
+      <button class="btn btn-light q-map-button" type="button" data-action="open-map">${icon('location')} Lageplan öffnen (Nummern 1–16)</button>
+      ${qQuestion('C1',Q.questionsC.C1,`<div class="field-grid">${qChoice('C1_Gebaeude','Gebäude',Q.buildings,a.C1_Gebaeude)}${qText('C1_Raum','Raumnummer',a.C1_Raum,'z. B. 111')}</div>`,master?.building||master?.room?`Bisherige Stammdaten: ${master.building||'Gebäude offen'} / ${master.room||'Raum offen'} – bitte im Interview bestätigen.`:'')}
+      ${qQuestion('C2',Q.questionsC.C2,places(Q.spacesC2,'C2',true))}
+      ${qQuestion('C3',Q.questionsC.C3,days('C3'))}
+      ${qQuestion('C4',Q.questionsC.C4,days('C4'))}
+      ${qQuestion('C5',Q.questionsC.C5,`<div class="field-grid">${qChoice('C5_Ankunft','Ihre Antwort',Q.arrivals,a.C5_Ankunft)}${qText('C5_anderer_Ort','anderer Ort:',a.C5_anderer_Ort,'Nur bei „anderer Ort“')}</div>`)}
+      ${qQuestion('C6',Q.questionsC.C6,c6)}
+      ${qQuestion('C7',Q.questionsC.C7,c7)}
+      ${qQuestion('C8',Q.questionsC.C8,c8)}
+      ${qQuestion('C9',Q.questionsC.C9,c9)}
+      <div class="q-thanks"><h3>${esc(Q.thanks)}</h3><p>${esc(Q.thanks_note)}</p></div>`;
+  }
+  function formStepD(){
+    const f=state.form,a=f.answers,p=state.people.find(x=>x.id===f.personId),isNo=consentNo(a.Einwilligung),isYes=consentYes(a.Einwilligung);
+    const answered=Object.entries(a).filter(([key,val])=>!['no_exchange','C8_Anzahl'].includes(key)&&val!==''&&val!==null&&val!==undefined&&val!==false).length;
+    return `${qHead('KONTROLLE','Prüfen & Speichern','Antworten kontrollieren, als Entwurf speichern oder abschließen.')}
+    <div class="summary-grid"><div class="summary-item"><strong>${isNo?'Nein':isYes?'Ja':'–'}</strong><small>Einwilligung</small></div><div class="summary-item"><strong>${f.edges.length}</strong><small>B1-Kanten</small></div><div class="summary-item"><strong>${answered}</strong><small>Ausgefüllte Angaben</small></div></div>
+    <div class="review-row"><span>Person</span><strong>${esc(p?.code)} · ${esc(p?.full_name)}</strong></div>
+    <div class="review-row"><span>Interview-Nr.</span><strong>${esc(a.Interview_Nr||'–')}</strong></div>
+    <div class="review-row"><span>Kürzel / Interviewer:in</span><strong>${esc(f.interviewer_name||'–')}</strong></div>
+    <div class="review-row"><span>Datum</span><strong>${esc(a.Datum||'–')}</strong></div>
+    <div class="review-row"><span>A1 · Gruppe</span><strong>${esc(a.A1_Gruppe||'übersprungen')}</strong></div>
+    <div class="review-row"><span>A2 · Kategorie</span><strong>${esc(a.A2_Kategorie||'übersprungen')}</strong></div>
+    <div class="review-row"><span>B1 · Fachlicher Austausch</span><strong>${f.edges.length} von ${Math.max(0,state.people.length-1)} Personen${a.no_exchange?' · explizit keine':''}</strong></div>
+    <div class="review-row"><span>C1 · Büro</span><strong>${esc([a.C1_Gebaeude,a.C1_Raum].filter(Boolean).join(' · ')||'übersprungen')}</strong></div>
+    <div class="review-row"><span>C8 · Gesprächsorte</span><strong>${qCountC8()} / max. 3</strong></div>
+    <div class="field" style="margin-top:20px"><label>Interne Interviewnotizen (optional)</label><textarea data-field="interview_notes" placeholder="Offene Fragen, Unklarheiten, Interviewdauer ...">${esc(f.interview_notes||'')}</textarea></div>
+    <div class="notice-box ${!isYes?'warn':''}" style="margin-top:22px">${icon('info')}<span>${isNo?'Die Person hat die Teilnahme abgelehnt. Bitte nur die Ablehnung dokumentieren.':!isYes?'Die Einwilligung fehlt. Ein Abschluss ist erst nach „Ja“ oder dokumentierter Ablehnung möglich.':'Die Vorlage erlaubt das Überspringen einzelner Fragen. Prüfe offene Felder und sichere danach den Datensatz.'}</span></div>`;
   }
   function renderInterview(){
     if(!state.form)return empty('Kein Interview ge\u00f6ffnet','Bitte w\u00e4hle eine Person aus der Liste.','clipboard','<button class="btn btn-primary" data-action="navigate" data-route="people">Personen anzeigen</button>');
     const f=state.form,p=state.people.find(x=>x.id===f.personId);
-    return pageHead('Interviewdurchf\u00fchrung',esc(p?.full_name||'Interview'),`${esc(p?.code||'')} \u00b7 Antworten zentral speichern, fachliche Verbindungen strukturiert erfassen.`,`<span id="dirty-indicator" class="pill ${state.draftDirty?'orange':'green'}">${state.draftDirty?'Ungespeichert':'Gespeichert'}</span><button class="btn btn-light" data-action="back-to-interviews">${icon('chevron')} Zur \u00dcbersicht</button>`)+
-    `<div class="interview-layout"><aside class="panel interview-rail">${stepNames.map((name,index)=>`<button type="button" class="step-button ${state.step===index?'active':''}" data-action="step" data-step="${index}" aria-current="${state.step===index?'step':'false'}"><span class="step-index">${index+1}</span><span class="step-name">${name}</span></button>`).join('')}<div class="step-separator"></div><div style="padding:10px 8px;font-size:11px;line-height:1.7;color:var(--muted)">${icon('shield',15)} Jede Speicherung wird auf Bearbeitungskonflikte gepr\u00fcft.</div></aside><section class="panel interview-form-card">${[formStepA,formStepB,formStepC,formStepD][state.step]()}<div class="form-footer"><button type="button" class="btn btn-light" data-action="previous-step" ${state.step===0?'disabled':''}>Zur\u00fcck</button><div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn btn-ghost" data-action="save-draft">${icon('save')} Entwurf sichern</button>${state.step<3?`<button type="button" class="btn btn-primary" data-action="next-step">Weiter ${icon('arrow')}</button>`:`<button type="button" class="btn btn-primary" data-action="save-completed">${icon('check')} Abschlie\u00dfen</button>`}</div></div></section></div>`;
+    return pageHead('Interviewdurchf\u00fchrung',esc(p?.full_name||'Interview'),`${esc(p?.code||'')} \u00b7 Fragebogen V7 · A1–A6, B1–B6, C1–C9 · Antworten zentral speichern.`,`<span id="dirty-indicator" class="pill ${state.draftDirty?'orange':'green'}">${state.draftDirty?'Ungespeichert':'Gespeichert'}</span><button class="btn btn-light" data-action="back-to-interviews">${icon('chevron')} Zur \u00dcbersicht</button>`)+
+    `<div class="interview-layout"><aside class="panel interview-rail">${stepNames.map((name,index)=>`<button type="button" class="step-button ${state.step===index?'active':''}" data-action="step" data-step="${index}" aria-current="${state.step===index?'step':'false'}"><span class="step-index">${index+1}</span><span class="step-name">${name}</span></button>`).join('')}<div class="step-separator"></div><div style="padding:10px 8px;font-size:11px;line-height:1.7;color:var(--muted)">${icon('shield',15)} Jede Speicherung wird auf Bearbeitungskonflikte gepr\u00fcft.</div></aside><section class="panel interview-form-card">${[formStepA,formStepB,formStepC,formStepD][state.step]()}<div class="form-footer"><button type="button" class="btn btn-light" data-action="previous-step" ${state.step===0?'disabled':''}>Zur\u00fcck</button><div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn btn-ghost" data-action="save-draft">${icon('save')} Entwurf sichern</button>${state.step<3?`<button type="button" class="btn btn-primary" data-action="next-step">Weiter ${icon('arrow')}</button>`:`<button type="button" class="btn btn-primary" data-action="save-completed">${icon('check')} ${consentNo(f.answers.Einwilligung)?'Ablehnung dokumentieren':'Abschließen'}</button>`}</div></div></section></div>`;
   }
   function renderNetwork(){
     const c=counts(), degrees=new Map(state.people.map(p=>[p.id,0]));
@@ -254,9 +323,9 @@
   }
   function renderExport(){
     const c=counts(),canExport=state.member?.role==='admin';
-    const sheets=[['Persons','Personenmerkmale, ID, Rolle, Geb\u00e4ude, B\u00fcro'],['Interviews','Interviewer, Zeitpunkt, Status und Version'],['Answers','Frage / Antwort je Interview'],['Edges','Gerichtete Netzwerkkanten mit Frequenz, Art und Inhalt'],['Locations','Weitere Orte und Aufenthaltsfrequenzen'],['Nodes','Gephi-taugliche Knotenliste'],['Datenqualitaet','Offene Angaben und Erhebungsstatus']];
+    const sheets=[['Gesamt_Personen','Codierte Antworten: eine Zeile je Person, wie im Original'],['Gesamt_Netzwerk','B1–B6: alle möglichen Personenpaare, inkl. Nullkanten'],['Codebuch','Originalvariablen und Kodierung aus Excel V7'],['Persons','Personenmerkmale, ID, Rolle, Geb\u00e4ude, B\u00fcro'],['Interviews','Interviewer, Zeitpunkt, Status und Version'],['Answers','Frage / Antwort je Interview'],['Edges','Gerichtete Netzwerkkanten mit Frequenz, Art und Inhalt'],['Locations','Weitere Orte und Aufenthaltsfrequenzen'],['Nodes','Gephi-taugliche Knotenliste'],['Datenqualitaet','Offene Angaben und Erhebungsstatus']];
     return pageHead('Daten & Auswertung','Datenexport','Lade die gemeinsamen Interviewdaten als Excel-Arbeitsmappe herunter. Die Daten werden direkt aus Supabase gelesen.')+
-      `<div class="export-grid"><div><section class="export-feature"><div class="feature-icon">${icon('download',27)}</div><div><span class="eyebrow">Wissenschaftlicher Export</span><h2>Ein Download. Alle Daten.</h2><p>Der Excel-Export enth\u00e4lt Personen, die Originalantworten, r\u00e4umliche Informationen und gerichtete Netzwerkbeziehungen in getrennten Tabellenbl\u00e4ttern.</p><button class="btn btn-primary" data-action="export-xlsx" ${canExport?'':'disabled'}>${icon('download')} Excel (.xlsx) herunterladen</button>${!canExport?'<p style="margin-top:10px">Export nur mit Administrator-Rechten verf\u00fcgbar.</p>':''}</div></section><div class="notice-box warn" style="margin-top:20px">${icon('alert')}<span>Der Export enth\u00e4lt personenbezogene Forschungsdaten. Nicht in GitHub hochladen und nur \u00fcber zugelassene Hochschulablagen weitergeben. Vor der Erhebung Datenschutz und Hochschulfreigabe pr\u00fcfen.</span></div></div><div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Enthaltene Tabellen</h2><span class="pill">7 Sheets</span></div><div class="sheet-list">${sheets.map(([name,desc])=>`<div class="sheet-item">${icon('file')}<div><strong>${name}</strong><small>${desc}</small></div>${icon('check',14)}</div>`).join('')}</div></div></div></div><div class="stat-grid" style="margin-top:22px">${stat('Personen',c.total,'F\u00fcr Nodes','users')}${stat('Kanten',c.edges,'F\u00fcr Edges','network')}${stat('Abgeschlossen',c.done,'Verwertbare Interviews','check')}${stat('Offene Interviews',c.pending+c.ongoing,'Datenqualit\u00e4t pr\u00fcfen','clock')}</div>`;
+      `<div class="export-grid"><div><section class="export-feature"><div class="feature-icon">${icon('download',27)}</div><div><span class="eyebrow">Wissenschaftlicher Export</span><h2>Ein Download. Alle Daten.</h2><p>Der Excel-Export enth\u00e4lt Personen, die Originalantworten, r\u00e4umliche Informationen und gerichtete Netzwerkbeziehungen in getrennten Tabellenbl\u00e4ttern.</p><button class="btn btn-primary" data-action="export-xlsx" ${canExport?'':'disabled'}>${icon('download')} Excel (.xlsx) herunterladen</button>${!canExport?'<p style="margin-top:10px">Export nur mit Administrator-Rechten verf\u00fcgbar.</p>':''}</div></section><div class="notice-box warn" style="margin-top:20px">${icon('alert')}<span>Der Export enth\u00e4lt personenbezogene Forschungsdaten. Nicht in GitHub hochladen und nur \u00fcber zugelassene Hochschulablagen weitergeben. Vor der Erhebung Datenschutz und Hochschulfreigabe pr\u00fcfen.</span></div></div><div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Enthaltene Tabellen</h2><span class="pill">${sheets.length} Sheets</span></div><div class="sheet-list">${sheets.map(([name,desc])=>`<div class="sheet-item">${icon('file')}<div><strong>${name}</strong><small>${desc}</small></div>${icon('check',14)}</div>`).join('')}</div></div></div></div><div class="stat-grid" style="margin-top:22px">${stat('Personen',c.total,'F\u00fcr Nodes','users')}${stat('Kanten',c.edges,'F\u00fcr Edges','network')}${stat('Abgeschlossen',c.done,'Verwertbare Interviews','check')}${stat('Offene Interviews',c.pending+c.ongoing,'Datenqualit\u00e4t pr\u00fcfen','clock')}</div>`;
   }
   function clearModal(){state.modal='';const host=qs('#modal-host');if(host)host.innerHTML='';}
   function openPersonModal(){
@@ -287,18 +356,38 @@
     if(el.id==='people-search'){state.query=el.value;refreshPeopleTable();return;}
     if(el.id==='people-filter'){state.filter=el.value;refreshPeopleTable();return;}
     if(!state.form)return;
-    if(el.dataset.field){state.form[el.dataset.field]=el.value;markDirty();return;}
-    if(el.dataset.answer){state.form.answers[el.dataset.answer]=el.type==='checkbox'?el.checked:el.value;markDirty();return;}
-    if(el.dataset.edgeField){
-      const edge=state.form.edges[Number(el.dataset.index)];if(edge){edge[el.dataset.edgeField]=el.value;markDirty();}return;
+    if(el.id==='peer-search'){
+      state.peerQuery=el.value;const list=qs('#peer-results');if(list)list.innerHTML=renderPeerResults();return;
     }
-    if(el.dataset.topic){
+    if(el.id==='peer-only'){
+      state.peerOnly=el.checked;const list=qs('#peer-results');if(list)list.innerHTML=renderPeerResults();return;
+    }
+    if(el.dataset.field){state.form[el.dataset.field]=el.value;markDirty();return;}
+    if(el.dataset.answer){
+      const key=el.dataset.answer,val=el.type==='checkbox'?el.checked:el.value;
+      if(key.startsWith('C8_')&&el.type==='checkbox'&&val&&qCountC8()>=3&&!state.form.answers[key]){
+        el.checked=false;toast('Bei C8 dürfen höchstens 3 Orte angekreuzt werden.','error');return;
+      }
+      if(key==='no_exchange'&&val&&state.form.edges.length){
+        if(!window.confirm('Alle bisher markierten Austauschbeziehungen entfernen?')){el.checked=false;return;}
+        state.form.edges=[];
+      }
+      state.form.answers[key]=val;markDirty();
+      if(key==='Einwilligung'||key==='no_exchange'){render();}
+      if(key.startsWith('C8_')&&el.type==='checkbox'){
+        const counter=qs('.q-encounter-header span');if(counter)counter.textContent=qCountC8()+' / 3 ausgewählt';
+      }
+      return;
+    }
+    if(el.dataset.edgeField){
       const edge=state.form.edges[Number(el.dataset.index)];if(!edge)return;
-      const t=new Set(edge.topics||[]);if(el.checked)t.add(el.dataset.topic);else t.delete(el.dataset.topic);
-      edge.topics=[...t];markDirty();return;
+      if(el.dataset.edgeField==='topics_single')edge.topics=el.value?[el.value]:[];
+      else if(el.dataset.edgeField==='known_before_nxt')edge.known_before_nxt=el.value===''?null:el.value==='true';
+      else edge[el.dataset.edgeField]=el.value;
+      markDirty();return;
     }
     if(el.dataset.locationField){
-      const location=state.form.locations[Number(el.dataset.index)];if(location){location[el.dataset.locationField]=el.value;markDirty();}
+      const location=state.form.locations[Number(el.dataset.index)];if(location){location[el.dataset.locationField]=el.value;markDirty();}return;
     }
   }
   function refreshPeopleTable(){
@@ -307,32 +396,42 @@
   }
   async function saveInterview(status,background=false){
     if(state.busy||!state.form)return;
-    const f=state.form;
+    const f=state.form,a=f.answers;
     clearTimeout(autosaveTimer);
     const revision=f.changeRevision||0;
+    const refused=consentNo(a.Einwilligung);
     if(status==='completed'&&!background){
-      if(!clean(f.interviewer_name)){state.step=0;render();toast('Bitte Namen der interviewenden Person eintragen.','error');return;}
-      if(!clean(f.role_group)){state.step=0;render();toast('Bitte zuerst die Mitarbeitergruppe erfassen.','error');return;}
-      if(!f.edges.length&&!f.answers.no_exchange){state.step=1;render();toast('Bitte mindestens einen Austauschpartner eintragen oder die Option "kein Austausch" markieren.','error');return;}
+      if(!consentYes(a.Einwilligung)&&!refused){state.step=0;render();toast('Bitte Einwilligung oder Ablehnung dokumentieren.','error');return;}
+      if(!clean(f.interviewer_name)){state.step=0;render();toast('Bitte das Kürzel der interviewenden Person eintragen.','error');return;}
+      if(qCountC8()>3){state.step=2;render();toast('Bei C8 sind höchstens drei Angaben möglich.','error');return;}
+      if(f.locations.slice(0,6).some(l=>!clean(l.building)&&clean(l.place))){state.step=2;render();toast('Bei C6 bitte bei jedem ausgefüllten Raum auch das Gebäude angeben.','error');return;}
+      if(f.edges.some(e=>!e.target_person_id)){state.step=1;render();toast('Bei B1 ist eine Zielperson nicht ausgewählt.','error');return;}
+      if(f.edges.length&&a.no_exchange){state.step=1;render();toast('B1: Kanten erfasst und gleichzeitig „keine Austauschpartner“ markiert.','error');return;}
+      if(refused)status='declined';
     }
-    if(f.edges.some(e=>!e.target_person_id)){
-      state.step=1;render();toast('Bitte bei jeder erfassten Kante eine Zielperson ausw\u00e4hlen oder die leere Zeile entfernen.','error');return;
-    }
-    if(f.edges.some(e=>e.target_person_id===f.personId)||new Set(f.edges.map(e=>e.target_person_id)).size!==f.edges.length){
-      state.step=1;render();toast('Selbstverbindungen und doppelt erfasste Zielpersonen sind nicht zul\u00e4ssig.','error');return;
-    }
-    if(f.edges.length&&f.answers.no_exchange){
-      state.step=1;render();toast('Bitte den Haken "keine Austauschpartner" entfernen, wenn Kanten erfasst wurden.','error');return;
+    if(f.edges.some(e=>!e.target_person_id)||f.edges.some(e=>e.target_person_id===f.personId)||new Set(f.edges.map(e=>e.target_person_id)).size!==f.edges.length){
+      state.step=1;render();toast('B1: Doppelte oder ungültige Austauschbeziehung.','error');return;
     }
     state.busy=true;
     try{
+      const answers={...a,Kuerzel:clean(f.interviewer_name)};
+      for(let i=0;i<6;i++){
+        answers['C6_Gebaeude_'+(i+1)]=f.locations[i]?.building||'';
+        answers['C6_Raum_'+(i+1)]=f.locations[i]?.place||'';
+      }
+      answers.C8_Anzahl=qCountC8();
+      const safeAnswers=refused?{
+        Interview_Nr:answers.Interview_Nr||'',Kuerzel:answers.Kuerzel||'',Datum:answers.Datum||'',Einwilligung:answers.Einwilligung
+      }:answers;
       const body={p_interview_id:f.interviewId,p_expected_version:f.version,p_status:status,
         p_interviewer_name:clean(f.interviewer_name),p_notes:clean(f.interview_notes),
-        p_role_group:clean(f.role_group),p_professional_title:clean(f.professional_title),
-        p_unit:clean(f.unit),p_building:clean(f.building),p_room:clean(f.room),
-        p_answers:Object.entries(f.answers).map(([question_key,answer])=>({question_key,answer})),
-        p_edges:f.edges.map(edge=>({...edge,note:clean(edge.note)})),
-        p_locations:f.locations.filter(l=>clean(l.building)).map(l=>({...l}))};
+        p_role_group:refused?clean(f.role_group):clean(a.A1_Gruppe||f.role_group),
+        p_professional_title:refused?clean(f.professional_title):clean(a.A3_Selbstbezeichnung||f.professional_title),
+        p_unit:clean(f.unit),p_building:refused?clean(f.building):clean(a.C1_Gebaeude||f.building),
+        p_room:refused?clean(f.room):clean(a.C1_Raum||f.room),
+        p_answers:Object.entries(safeAnswers).filter(([k,v])=>v!==undefined).map(([question_key,answer])=>({question_key,answer})),
+        p_edges:refused?[]:f.edges.map(e=>({...e,note:clean(e.note),exchange_medium:e.exchange_medium||null,known_before_nxt:e.known_before_nxt??null})),
+        p_locations:refused?[]:f.locations.filter(l=>clean(l.building)).map(l=>({...l}))};
       const {data,error}=await state.db.rpc('save_interview_snapshot',body);
       if(error)throw error;
       f.version=Number(data);f.status=status;state.draftDirty=f.changeRevision!==revision;
@@ -342,13 +441,15 @@
         if(indicator){indicator.className='pill '+(state.draftDirty?'orange':'green');indicator.textContent=state.draftDirty?'Ungespeichert':'Automatisch gespeichert';}
         if(state.draftDirty)markDirty();
       }else{
-        if(status==='completed'){state.route='interviews';state.form=null;toast('Interview abgeschlossen und zentral gespeichert.','success');}
-        else toast('Interviewentwurf zentral gespeichert.','success');
+        if(status==='completed'||status==='declined'){
+          state.route='interviews';state.form=null;
+          toast(status==='declined'?'Ablehnung dokumentiert.':'Interview zentral gespeichert und abgeschlossen.','success');
+        }else toast('Interviewentwurf zentral gespeichert.','success');
         render();
       }
     }catch(e){
       const conflict=/INTERVIEW_CONFLICT/i.test(e.message||'');
-      toast(conflict?'Speicherkonflikt: Dieses Interview wurde inzwischen auf einem anderen Ger\u00e4t ge\u00e4ndert. Bitte \u00c4nderungen sichern und die Seite aktualisieren.':'Speichern fehlgeschlagen: '+(e.message||e),'error');
+      toast(conflict?'Speicherkonflikt: Dieses Interview wurde inzwischen auf einem anderen Gerät geändert. Bitte Daten sichern und die Seite aktualisieren.':'Speichern fehlgeschlagen: '+(e.message||e),'error');
     }finally{state.busy=false;}
   }
   function canLeave(){return !state.draftDirty||window.confirm('Es gibt ungespeicherte Interviewdaten. Wirklich ohne Speichern wechseln?');}
@@ -430,6 +531,84 @@
     }
     throw Error('Exportlimit erreicht. Bitte die Datenbankabfrage eingrenzen.');
   }
+  // Codebook-faithful export: the original workbook has one row per person and
+  // one row per possible directed person-pair, not only positive edges.
+  const excelLookup = (raw,items) => {
+    if(raw===undefined||raw===null||raw==='')return '';
+    const idx=(items||[]).findIndex(item=>String(Array.isArray(item)?item[0]:item)===String(raw));
+    return idx>=0?idx+1:'';
+  };
+  const excelBinary=(raw) => raw===true||raw==='Ja'||raw==='ja'||raw==='x'||raw===1?1:
+    raw===false||raw==='Nein'||raw==='nein'||raw===0?0:'';
+  const questionnaireValue=(key,answers,status)=>{
+    const v=answers[key];
+    if(key==='Kuerzel')return v||'';
+    if(key==='Einwilligung')return consentYes(v)?1:consentNo(v)?0:'';
+    const maps={
+      A1_Gruppe:Q.groups,A2_Kategorie:Q.categories,A4_Alter:Q.ages,
+      A5_Geschlecht:Q.genders,B_Aussage_Austausch_wichtig:Q.likert,
+      C9_1:Q.likert,C9_2:Q.likert,C9_3:Q.likert,C9_4:Q.likert,C9_5:Q.likert
+    };
+    if(maps[key])return excelLookup(v,maps[key]);
+    if(key==='C5_Ankunft'){
+      if(!v)return '';
+      if(String(v)==='direkt an meinem Gebäude')return 98;
+      if(String(v)==='anderer Ort')return 99;
+      const n=parseInt(String(v),10);return n>=10&&n<=16?n:'';
+    }
+    if(key==='A6_vor_NXT'||key.startsWith('C2_')&&!key.endsWith('_Etage')||
+       key.startsWith('C7_')&&!key.endsWith('_Text'))return excelBinary(v);
+    if(key.startsWith('C3_')||key.startsWith('C4_')||key.startsWith('C8_')&&key!=='C8_Anzahl'&&!key.endsWith('_Text')){
+      if(v===undefined)return status==='completed'?0:'';
+      return excelBinary(v);
+    }
+    if(key==='C8_Anzahl')return (Q.encountersC8||[]).filter(([k])=>answers['C8_'+k]===true).length;
+    return v??'';
+  };
+  function createCodebookExports(wb,people,interviews,edges,answers){
+    const byPersonId=new Map(people.map(p=>[p.id,p]));
+    const interviewByPerson=new Map(interviews.map(i=>[i.person_id,i]));
+    const answersByInterview=new Map();
+    for(const a of answers){
+      if(!answersByInterview.has(a.interview_id))answersByInterview.set(a.interview_id,{});
+      answersByInterview.get(a.interview_id)[a.question_key]=a.answer;
+    }
+    const edgeByPair=new Map(edges.map(e=>[e.source_person_id+'|'+e.target_person_id,e]));
+    const varNames=(Q.codebook||[]).filter(r=>r[1]==='Gesamt_Personen').map(r=>r[0]);
+    const rows=people.slice().sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})).map(p=>{
+      const interview=interviewByPerson.get(p.id),a=interview?answersByInterview.get(interview.id)||{}:{},status=interview?.status||'planned';
+      const result={ID:p.code,Status:status==='completed'?'durchgeführt':status==='declined'?'abgelehnt':'offen'};
+      for(const key of varNames){
+        if(key==='ID'||key==='Status')continue;
+        result[key]=questionnaireValue(key,a,status);
+      }
+      return result;
+    });
+    makeSheet(wb,'Gesamt_Personen',varNames,rows);
+    const pairVars=(Q.codebook||[]).filter(r=>r[1]==='Gesamt_Netzwerk').map(r=>r[0]);
+    const pairs=[];
+    const sortedPeople=people.slice().sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true}));
+    for(const ego of sortedPeople){
+      const i=interviewByPerson.get(ego.id),a=i?answersByInterview.get(i.id)||{}:{};
+      const usable=i?.status==='completed' && (edges.some(e=>e.source_person_id===ego.id)||a.no_exchange===true);
+      for(const alter of sortedPeople){
+        const own=ego.id===alter.id;const e=!own?edgeByPair.get(ego.id+'|'+alter.id):null;
+        const arr=e?.topics||[];const topic=arr[0];
+        pairs.push({
+          Ego_ID:ego.code,Alter_ID:alter.code,Eigene_Person:own?1:0,
+          B1_Austausch:own?'':usable?(e?1:0):'',
+          B2_Inhalt:e?excelLookup(topic,Q.b2):'',
+          B3_Haeufigkeit:e?excelLookup(e.frequency,Q.b3):'',
+          B4_Zustandekommen:e?excelLookup(e.exchange_mode,Q.b4):'',
+          B5_Medium:e?excelLookup(e.exchange_medium,Q.b5):'',
+          B6_vor_NXT_bekannt:e?excelBinary(e.known_before_nxt):''
+        });
+      }
+    }
+    makeSheet(wb,'Gesamt_Netzwerk',pairVars,pairs);
+    const cb=(Q.codebook||[]).map(([Variable,Blatt,Frage,Codierung])=>({Variable,Blatt,Frage,Codierung}));
+    makeSheet(wb,'Codebuch',['Variable','Blatt','Frage','Codierung'],cb);
+  }
   async function exportData(){
     if(state.member?.role!=='admin'){toast('Der Datenexport ist nur f\u00fcr Administratoren freigegeben.','error');return;}
     if(!window.XLSX){toast('Die Excel-Bibliothek ist nicht verf\u00fcgbar.','error');return;}
@@ -442,7 +621,7 @@
       const personRows=people.map(p=>({ID:p.id,Code:p.code,Name:p.full_name,Mitarbeitergruppe:p.role_group,Berufsbezeichnung:p.professional_title,Bereich:p.unit,Gebaeude:p.building,Raum:p.room,Anmerkungen:p.notes}));
       const interviewRows=interviews.map(i=>({InterviewID:i.id,PersonenID:i.person_id,Person:byId.get(i.person_id)?.full_name,Status:i.status,Interviewer:i.interviewer_name,Beginn:i.started_at,Abschluss:i.completed_at,DauerMinuten:i.started_at&&i.completed_at?Math.round((new Date(i.completed_at)-new Date(i.started_at))/60000*10)/10:'',LetzteAktualisierung:i.updated_at,Version:i.version,Notizen:i.notes}));
       const answerRows=answers.map(a=>({InterviewID:a.interview_id,PersonCode:byId.get(interviewById.get(a.interview_id)?.person_id)?.code||'',Frage:a.question_key,Antwort:JSON.stringify(a.answer),LetzteAktualisierung:a.updated_at}));
-      const edgeRows=edges.map(e=>({Source:byId.get(e.source_person_id)?.code||e.source_person_id,Target:byId.get(e.target_person_id)?.code||e.target_person_id,SourceName:byId.get(e.source_person_id)?.full_name,TargetName:byId.get(e.target_person_id)?.full_name,Frequency:e.frequency,Topics:(e.topics||[]).join(' | '),ExchangeMode:e.exchange_mode,Note:e.note,InterviewID:e.interview_id,Directed:true}));
+      const edgeRows=edges.map(e=>({B2_Inhalt:(e.topics||[])[0]||'',B3_Haeufigkeit:e.frequency,B4_Zustandekommen:e.exchange_mode,B5_Medium:e.exchange_medium,B6_vor_NXT_bekannt:e.known_before_nxt,Source:byId.get(e.source_person_id)?.code||e.source_person_id,Target:byId.get(e.target_person_id)?.code||e.target_person_id,SourceName:byId.get(e.source_person_id)?.full_name,TargetName:byId.get(e.target_person_id)?.full_name,Frequency:e.frequency,Topics:(e.topics||[]).join(' | '),ExchangeMode:e.exchange_mode,Note:e.note,InterviewID:e.interview_id,Directed:true}));
       const locationRows=locations.map(l=>({PersonCode:byId.get(l.person_id)?.code||'',Person:byId.get(l.person_id)?.full_name,Gebaeude:l.building,Ort:l.place,Frequenz:l.frequency,Anmerkungen:l.notes}));
       const nodeRows=people.map(p=>({Id:p.code,Label:p.full_name,Group:p.role_group,Unit:p.unit,Building:p.building,Room:p.room}));
       const dqRows=people.map(p=>{
@@ -451,14 +630,15 @@
         return {PersonCode:p.code,Name:p.full_name,Interviewstatus:i?.status||'planned',FehltMitarbeitergruppe:!p.role_group,FehltGebaeude:!p.building,FehltRaum:!p.room,FehltInterviewer:!i?.interviewer_name,KantenAnzahl:n,KeinAustauschBestatigt:Boolean(an.no_exchange),FachlicherAustauschUngeklaert:n===0&&!an.no_exchange};
       });
       const wb=window.XLSX.utils.book_new();wb.Props={Title:'NXT Netzwerkforschung - Interviewdaten',Subject:'Fachlicher Austausch und raeumliche Naehe',Author:'NXT Research'};
+      createCodebookExports(wb,people,interviews,edges,answers);
       makeSheet(wb,'Persons',['ID','Code','Name','Mitarbeitergruppe','Berufsbezeichnung','Bereich','Gebaeude','Raum','Anmerkungen'],personRows);
       makeSheet(wb,'Interviews',['InterviewID','PersonenID','Person','Status','Interviewer','Beginn','Abschluss','DauerMinuten','LetzteAktualisierung','Version','Notizen'],interviewRows);
       makeSheet(wb,'Answers',['InterviewID','PersonCode','Frage','Antwort','LetzteAktualisierung'],answerRows);
-      makeSheet(wb,'Edges',['Source','Target','SourceName','TargetName','Frequency','Topics','ExchangeMode','Note','InterviewID','Directed'],edgeRows);
+      makeSheet(wb,'Edges',['Source','Target','B2_Inhalt','B3_Haeufigkeit','B4_Zustandekommen','B5_Medium','B6_vor_NXT_bekannt','SourceName','TargetName','Frequency','Topics','ExchangeMode','Note','InterviewID','Directed'],edgeRows);
       makeSheet(wb,'Locations',['PersonCode','Person','Gebaeude','Ort','Frequenz','Anmerkungen'],locationRows);
       makeSheet(wb,'Nodes',['Id','Label','Group','Unit','Building','Room'],nodeRows);
       makeSheet(wb,'Datenqualitaet',['PersonCode','Name','Interviewstatus','FehltMitarbeitergruppe','FehltGebaeude','FehltRaum','FehltInterviewer','KantenAnzahl','KeinAustauschBestatigt','FachlicherAustauschUngeklaert'],dqRows);
-      const date=new Date().toISOString().slice(0,10);window.XLSX.writeFile(wb,`NXT_Netzwerkforschung_${date}.xlsx`,{compression:true});
+      const date=new Date().toISOString().slice(0,10);window.XLSX.writeFile(wb,`NXT_Netzwerkforschung_V7_${date}.xlsx`,{compression:true});
       toast('Excel-Export wurde erstellt. Bitte ausschlie\u00dflich gesch\u00fctzt ablegen.','success');
     }catch(e){toast('Excel-Export fehlgeschlagen: '+(e.message||e),'error');}
     finally{state.busy=false;}
@@ -479,6 +659,8 @@
     if(a==='step'){state.step=Number(btn.dataset.step);render();return;}
     if(a==='next-step'){state.step=Math.min(3,state.step+1);render();window.scrollTo(0,0);return;}
     if(a==='previous-step'){state.step=Math.max(0,state.step-1);render();window.scrollTo(0,0);return;}
+    if(a==='open-map'){const host=qs('#modal-host');if(host){host.innerHTML=`<div class="modal-backdrop"><div class="modal modal-map" role="dialog" aria-modal="true" aria-label="Lageplan zur Befragung"><div class="modal-head"><h2>Lageplan zur Befragung · NXT</h2><button type="button" class="icon-button" data-action="close-modal" aria-label="Schließen">${icon('x')}</button></div><div class="modal-body"><img class="q-map-image" src="./assets/nxt-lageplan.webp" alt="Campus-Lageplan mit Gebäude- und Ankunftsortnummern 1 bis 16"></div></div></div>`;}return;}
+    if(a==='toggle-peer'){const id=btn.dataset.person;if(!id||id===state.form.personId)return;const index=state.form.edges.findIndex(x=>x.target_person_id===id);if(index>=0)state.form.edges.splice(index,1);else {state.form.edges.push({target_person_id:id,frequency:'',topics:[],exchange_mode:'',exchange_medium:'',known_before_nxt:null,note:''});state.form.answers.no_exchange=false;}markDirty();render();return;}
     if(a==='add-edge'){
       state.form.edges.push({target_person_id:'',frequency:'',topics:[],exchange_mode:'',note:''});
       if(state.form.answers.no_exchange)state.form.answers.no_exchange=false;
