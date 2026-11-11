@@ -8,7 +8,7 @@ Die geografische Ebene ergänzt die vorhandene soziale Netzwerkanalyse. Sie visu
 - Räumliche Ebene: Arbeits-/Bürogebäude, vorhandene Räume und vorläufige Campusmarker. Die angezeigten Personenwerte sind keine Live-Anwesenheitsdaten.
 
 ## Bild-Koordinatensystem v1
-`NXT-IMG-1000`: x = 0…1000 und y = 0…563 (links oben = 0,0). Es sind reine Bildkoordinaten für die **illustrative** WebP-Karte im Seitenverhältnis 1672:941. Sie entsprechen weder Dezimalgrad/GPS noch Metern. Die Marker bleiben beim Skalieren auf dem Bild verankert. Als verlässlich beschriftete Referenz wird der bereits im Fragebogen verwendete `assets/nxt-lageplan.png` (Campusplan Stand 07/2025, bearbeitet) zum manuellen Vergleich geöffnet; beide Ansichten sind noch nicht deckungsgleich kalibriert.
+`NXT-IMG-1000`: x = 0…1000 und y = 0…563 (links oben = 0,0). Es sind reine Bildkoordinaten für die **illustrative** WebP-Karte im Seitenverhältnis 1672:941. Sie entsprechen weder Dezimalgrad/GPS noch Metern. Die Marker bleiben beim Skalieren auf dem Bild verankert. Als verlässlich beschriftete Referenz wird der bereits im Fragebogen verwendete `assets/nxt-lageplan.webp` (Campusplan Stand 07/2025, bearbeitet) zum manuellen Vergleich geöffnet; beide Ansichten sind noch nicht deckungsgleich kalibriert.
 
 | Gebäude | X | Y | angenommene oberirdische Geschosse | angenommene Höhe | Herkunft |
 | --- | ---: | ---: | ---: | ---: | --- |

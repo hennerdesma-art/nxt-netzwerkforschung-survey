@@ -9,7 +9,7 @@
     version: '2026-11-11-concept-v1', width:1000, height:563, baseWidth:1672, baseHeight:941,
     coordinateSystem:'NXT-IMG-1000', geographic:false, spatialAccuracy:'illustration-only',
     artwork:'./assets/nxt-campus-2_5d.webp',
-    referencePlan:'./assets/nxt-lageplan.png',
+    referencePlan:'./assets/nxt-lageplan.webp',
     buildings:[
       {id:'21',label:'Gebäude 21',x:328,y:58,estimatedStoreys:2,basement:'assumed',heightM:7,source:'Konzeptkarte, Gebäudehöhe geschätzt',emphasis:'research'},
       {id:'5',label:'Gebäude 5',x:482,y:154,estimatedStoreys:2,basement:'assumed',heightM:7,source:'Konzeptkarte, Gebäudehöhe geschätzt',emphasis:'research'},
