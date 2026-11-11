@@ -9,14 +9,14 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 MOCK = r'''
-window.NXT_CONFIG={SUPABASE_URL:'https://mock.supabase.co', SUPABASE_PUBLISHABLE_KEY:'sb_publishable_mock', AUTH_EMAIL:'test@example.org', TARGET_COUNT:40};
+window.NXT_CONFIG={SUPABASE_URL:'https://mock.supabase.co', SUPABASE_PUBLISHABLE_KEY:'sb_publishable_mock', AUTH_EMAIL:'', TARGET_COUNT:40};
 const persons=Array.from({length:9},(_,i)=>({id:'p'+(i+1),code:'NXT-'+String(i+1).padStart(3,'0'),full_name:'Person '+String(i+1).padStart(3,'0'),role_group:i%2?'Wissenschaftliche Mitarbeitende':'Professor:innen',building:['5','16','17','21','D'][i%5],room:String(100+i),professional_title:'',unit:''}));
 const interviews=[{id:'i1',person_id:'p1',status:'completed',interviewer_name:'Testteam',version:2,started_at:'2026-11-10T10:20:00Z',updated_at:'2026-11-10T11:00:00Z'}, {id:'i2',person_id:'p2',status:'in_progress',interviewer_name:'Testteam',version:1,started_at:'2026-11-10T12:00:00Z',updated_at:'2026-11-10T12:30:00Z'}];
 const edges=[{id:'e1',interview_id:'i1',source_person_id:'p1',target_person_id:'p2',topics:['Forschung'],frequency:'woechentlich',exchange_mode:'persoenlich'}, {id:'e2',interview_id:'i1',source_person_id:'p1',target_person_id:'p3',topics:['Lehre'],frequency:'monatlich',exchange_mode:'digital'}];
 const locations=[];const answers=[{interview_id:'i1',question_key:'no_exchange',answer:false}];
 const data={persons, interviews, edges, locations, answers, survey_members:[{user_id:'mock-id',role:'admin',active:true,display_name:'NXT Testteam'}]};
 class Query {constructor(t){this.t=t;this.filters=[];this.kind='select';} select(){return this;} eq(k,v){this.filters.push([k,v]);return this;} maybeSingle(){return Promise.resolve({data:this.result()[0]||null,error:null});} single(){let r;if(this.kind==='insert'){r=(Array.isArray(this.payload)?this.payload:[this.payload]).map((x,i)=>({id:'x'+Math.random().toString(36).slice(2),version:0,status:'planned',...x})); data[this.t].push(...r);}else r=this.result();return Promise.resolve({data:r[0]||null,error:null});} limit(){return Promise.resolve({data:this.result(),error:null});} range(from,to){return Promise.resolve({data:this.result().slice(from,to+1),error:null});} insert(payload){this.kind='insert';this.payload=payload;return this;} result(){return data[this.t].filter(r=>this.filters.every(([k,v])=>r[k]===v));} then(ok){if(this.kind==='insert'){data[this.t].push(...(Array.isArray(this.payload)?this.payload:[this.payload]).map(x=>({id:'x'+Math.random(),...x})));return Promise.resolve({data:this.payload,error:null}).then(ok);}return Promise.resolve({data:this.result(),error:null}).then(ok);}}
-const db={auth:{getSession:async()=>({data:{session:null},error:null}),signInWithPassword:async({password})=>password==='testing-password'?{data:{user:{id:'mock-id'}},error:null}:{error:{message:'bad password'}},signOut:async()=>({})},from:t=>new Query(t),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>{},rpc:async(name,params)=>{const i=interviews.find(x=>x.id===params.p_interview_id);if(!i||i.version!==params.p_expected_version)return {error:{message:'INTERVIEW_CONFLICT_OR_MISSING'}};Object.assign(i,{version:i.version+1,status:params.p_status,interviewer_name:params.p_interviewer_name,updated_at:new Date().toISOString()});edges.splice(0,edges.length,...params.p_edges.map((e,idx)=>({...e,id:'e_'+idx,interview_id:i.id,source_person_id:i.person_id})));return {data:i.version,error:null};}};
+const db={auth:{getSession:async()=>({data:{session:null},error:null}),signInWithPassword:async({email,password})=>password==='testing-password'&&email==='test@example.org'?{data:{user:{id:'mock-id'}},error:null}:{error:{message:'bad password'}},signOut:async()=>({})},from:t=>new Query(t),channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:async()=>{},rpc:async(name,params)=>{const i=interviews.find(x=>x.id===params.p_interview_id);if(!i||i.version!==params.p_expected_version)return {error:{message:'INTERVIEW_CONFLICT_OR_MISSING'}};Object.assign(i,{version:i.version+1,status:params.p_status,interviewer_name:params.p_interviewer_name,updated_at:new Date().toISOString()});edges.splice(0,edges.length,...params.p_edges.map((e,idx)=>({...e,id:'e_'+idx,interview_id:i.id,source_person_id:i.person_id})));return {data:i.version,error:null};}};
 window.supabase={createClient:()=>db};
 window.XLSX={utils:{book_new:()=>({SheetNames:[]}),aoa_to_sheet:a=>({a}),book_append_sheet:(wb,ws,name)=>wb.SheetNames.push(name),encode_col:x=>'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[x]},writeFile:(wb,name)=>{window.mockExport={sheets:wb.SheetNames,name}}};
 '''
@@ -40,10 +40,12 @@ try:
         html=re.sub(r'<script defer[^>]+></script>', '',html)
         html=html.replace('</body>','<script>'+MOCK+'</script><script>'+app+'</script></body>')
         page.set_content(html,wait_until='domcontentloaded')
-        page.wait_for_selector('#password',timeout=15000)
+        page.wait_for_selector('#email',timeout=15000)
+        page.locator('#email').fill('test@example.org')
         page.locator('#password').fill('wrongwrong')
         page.locator('#login-form button').click()
         page.locator('.form-error').wait_for(timeout=5000)
+        page.locator('#email').fill('test@example.org')
         page.locator('#password').fill('testing-password')
         page.locator('#login-form button').click()
         page.wait_for_selector('.stat-grid',timeout=15000)
