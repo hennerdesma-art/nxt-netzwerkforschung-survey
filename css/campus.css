@@ -150,3 +150,7 @@
 .nxt-network-layer-tabs button.active{background:#fff;color:#007c84;box-shadow:0 3px 12px #1254601a}
 .nxt-network-layer-tabs button:focus-visible{outline:2px solid #008b92;outline-offset:2px}
 @media(max-width:620px){.nxt-network-layer-tabs{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.nxt-network-layer-tabs button{padding:11px 7px;font-size:11px}}
+
+/* Invisible hit area keeps buildings clickable when employee count bubbles are hidden. */
+.nxt-campus-building-hit{fill:transparent;stroke:none;pointer-events:all}
+.nxt-campus-count-toggle[aria-pressed="true"]{border-color:#b5dedb;color:#007e86;background:#effaf8}

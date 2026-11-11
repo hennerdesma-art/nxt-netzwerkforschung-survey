@@ -11,7 +11,7 @@
   const buildingIDs=new Set(data.buildings.map(b=>b.id));
   const buildingById=new Map(data.buildings.map(b=>[b.id,b]));
   const meetingById=new Map(data.meetingCandidates.map(v=>[v.id,v]));
-  const p={tab:'map',building:'all',role:'all',topic:'all',frequency:'all',status:'all',direction:'all',minEdges:1,showLinks:true,showPeople:false,showMeetings:true,showGrid:false,showLabels:true,showHeat:false,zoom:1,panX:0,panY:0,selection:{type:'building',id:'16'},search:'',reference:false,fullscreen:false};
+  const p={tab:'map',building:'all',role:'all',topic:'all',frequency:'all',status:'all',direction:'all',minEdges:1,showLinks:true,showBuildingCounts:true,showPeople:false,showMeetings:true,showGrid:false,showLabels:true,showHeat:false,zoom:1,panX:0,panY:0,selection:{type:'building',id:'16'},search:'',reference:false,fullscreen:false};
   let root=null, ctx=null, answers=[], answerProblem='',mountNonce=0,drag=null;
   const titleTopic={...data.topicLabels};
   const statuses={planned:'Offen',in_progress:'In Bearbeitung',completed:'Abgeschlossen',declined:'Abgelehnt'};
@@ -96,9 +96,10 @@
       <div class="nxt-campus-field"><label for="c-min">Mindestanzahl je Gebäudekante <b>${p.minEdges}</b></label><input id="c-min" type="range" data-campus-filter="minEdges" min="1" max="8" step="1" value="${p.minEdges}"></div>
       <div class="nxt-campus-switches">
         ${switcher('showLinks','Gerichtete Beziehungen',true)}
+        ${switcher('showBuildingCounts','Mitarbeiterzahlen pro Gebäude',true)}
         ${switcher('showPeople','Personenpunkte im Gebäude',true)}
         ${switcher('showMeetings','Treffbereiche / Orte',true)}
-        ${switcher('showLabels','Gebäudezahlen / Bezeichnungen',true)}
+        ${switcher('showLabels','Gebäudebezeichnungen',true)}
         ${switcher('showHeat','Dichte als Heatmap',true)}
         ${switcher('showGrid','Bild-Koordinatenraster',true)}
       </div><button class="btn btn-light btn-sm nxt-campus-reset-filters" type="button" data-campus-action="reset-filters">Filter zurücksetzen</button>
@@ -137,10 +138,10 @@
     const active=p.selection?.type==='building'&&p.selection.id===b.id;
     const faded=p.building!=='all'&&p.building!==b.id;
     const r=18+Math.min(14,Math.sqrt(b.people.length)*3);
-    return `<g role="button" tabindex="0" class="nxt-campus-building ${active?'selected':''} ${faded?'muted':''}" data-campus-action="select-building" data-id="${esc(b.id)}"><circle class="nxt-campus-building-halo" cx="${b.x}" cy="${b.y}" r="${r+6}"/><circle class="nxt-campus-building-body" cx="${b.x}" cy="${b.y}" r="${r}"/><text x="${b.x}" y="${b.y+5}" text-anchor="middle">${b.people.length}</text>${p.showLabels?`<text class="nxt-campus-building-code" x="${b.x}" y="${b.y+r+22}" text-anchor="middle">Bau ${esc(b.id)}</text>`:''}<title>${esc(b.label)}: ${b.people.length} zugeordnete Personen · ${b.in} eingehende / ${b.out} ausgehende Kanten</title></g>`;
+    return `<g role="button" tabindex="0" class="nxt-campus-building ${active?'selected':''} ${faded?'muted':''} ${p.showBuildingCounts?'':'without-counts'}" data-campus-action="select-building" data-id="${esc(b.id)}">${p.showBuildingCounts?`<circle class="nxt-campus-building-halo" cx="${b.x}" cy="${b.y}" r="${r+6}"/><circle class="nxt-campus-building-body" cx="${b.x}" cy="${b.y}" r="${r}"/><text x="${b.x}" y="${b.y+5}" text-anchor="middle">${b.people.length}</text>`:`<circle class="nxt-campus-building-hit" cx="${b.x}" cy="${b.y}" r="${r+6}" fill="transparent" pointer-events="all"/>`}${p.showLabels?`<text class="nxt-campus-building-code" x="${b.x}" y="${b.y+r+22}" text-anchor="middle">Bau ${esc(b.id)}</text>`:''}<title>${esc(b.label)}: ${b.people.length} zugeordnete Personen · ${b.in} eingehende / ${b.out} ausgehende Kanten</title></g>`;
   }).join('')}</g>`}
   function mapSvg(m){return `<svg class="nxt-campus-svg" viewBox="0 0 ${data.width} ${data.height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interaktive Campuskarte mit Gebäuden, Personen und fachlichen Beziehungen"><defs><marker id="campus-arrow" orient="auto" markerWidth="7" markerHeight="7" refX="7" refY="3" markerUnits="userSpaceOnUse"><path d="M 0 0 L 7 3 L 0 6 Z" fill="#126f87"/></marker><radialGradient id="nxt-campus-heat-grad"><stop offset="0" stop-color="#008e97" stop-opacity=".9"/><stop offset="1" stop-color="#008e97" stop-opacity="0"/></radialGradient></defs>${p.showGrid?overlayGrid():''}${heatmap(m)}${edgeMarkup(m)}${personDots(m)}${meetingMarkers()}${buildingMarkers(m)}</svg>`}
-  function renderMap(m){return `<section class="panel nxt-campus-map-panel"><div class="nxt-campus-map-toolbar"><div><h3>2,5D Campusmodell</h3><small>Schematische Lage · ${data.coordinateSystem} · Gebäudehöhen geschätzt</small></div><div class="nxt-campus-map-actions"><button type="button" class="btn btn-light btn-sm" data-campus-action="reference">Originalplan</button><button type="button" class="btn btn-light btn-sm" data-campus-action="fullscreen">⛶ Vollbild</button></div></div>
+  function renderMap(m){return `<section class="panel nxt-campus-map-panel"><div class="nxt-campus-map-toolbar"><div><h3>2,5D Campusmodell</h3><small>Schematische Lage · ${data.coordinateSystem} · Gebäudehöhen geschätzt</small></div><div class="nxt-campus-map-actions"><button type="button" class="btn btn-light btn-sm nxt-campus-count-toggle" data-campus-action="toggle-building-counts" aria-pressed="${p.showBuildingCounts}" title="Große Kreise mit Mitarbeiterzahlen ein- oder ausblenden">${p.showBuildingCounts?'◉ Zahlen ausblenden':'◎ Zahlen einblenden'}</button><button type="button" class="btn btn-light btn-sm" data-campus-action="reference">Originalplan</button><button type="button" class="btn btn-light btn-sm" data-campus-action="fullscreen">⛶ Vollbild</button></div></div>
     <div class="nxt-campus-viewport" id="nxt-campus-viewport" aria-label="Campuskarte verschiebbar mit der Maus und per Touch">
       <div class="nxt-campus-map-layer" id="nxt-campus-layer" style="transform:translate(calc(-50% + ${p.panX}px),${p.panY}px) scale(${p.zoom})">
         <img class="nxt-campus-background" src="${data.artwork}" alt="Illustrierter isometrischer NXT Campusgrundriss mit Gebäuden 5, 16, 17, 21 und D" draggable="false"><div class="nxt-campus-not-scale">2,5D-KONZEPT · NICHT MASSSTÄBLICH</div>${mapSvg(m)}
@@ -194,7 +195,8 @@
     if(action==='zoom-in'){p.zoom=clamp(p.zoom+.18,.8,2.6);updateStageTransform();updateZoomLabel();return}
     if(action==='zoom-out'){p.zoom=clamp(p.zoom-.18,.8,2.6);updateStageTransform();updateZoomLabel();return}
     if(action==='zoom-reset'){p.zoom=1;p.panX=0;p.panY=0;updateStageTransform();updateZoomLabel();return}
-    if(action==='reset-filters'){Object.assign(p,{building:'all',role:'all',topic:'all',frequency:'all',status:'all',direction:'all',minEdges:1,showLinks:true,showPeople:false,showMeetings:true,showGrid:false,showLabels:true,showHeat:false});refresh();return}
+    if(action==='toggle-building-counts'){p.showBuildingCounts=!p.showBuildingCounts;refresh();return}
+    if(action==='reset-filters'){Object.assign(p,{building:'all',role:'all',topic:'all',frequency:'all',status:'all',direction:'all',minEdges:1,showLinks:true,showBuildingCounts:true,showPeople:false,showMeetings:true,showGrid:false,showLabels:true,showHeat:false});refresh();return}
     if(action==='reference'){p.reference=!p.reference;refresh();return}
     if(action==='fullscreen'){const panel=root.querySelector('.nxt-campus-map-panel');if(!panel)return;const active=!!document.fullscreenElement;if(active){document.exitFullscreen?.().catch(()=>{});}else{panel.requestFullscreen?.().catch(()=>{});}return}
     if(action==='export-matrix'){downloadMatrix(buildModel());return}
