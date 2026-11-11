@@ -25,7 +25,7 @@ Do not collect real interview data until the wording and the privacy process are
 
 1. Create an independent Supabase project, preferably in a vetted EU region
    selected by your university's data protection officer.
-2. Open `SQL Editor` and run `sql/001_initial_schema.sql` once.
+2. Open `SQL Editor` and run `sql/001_initial_schema.sql` once (already applied in the connected NXT project).
 3. In `Authentication > Users`, create an email/password user with a real
    organization-controlled email address. Set **the temporary password agreed separately in the private team conversation**
    as requested. Confirm the email within the Supabase dashboard or follow its
@@ -38,11 +38,10 @@ Do not collect real interview data until the wording and the privacy process are
    ```
 
 5. Configure `js/config.js` with your `SUPABASE_URL`, public
-   `SUPABASE_PUBLISHABLE_KEY` (begins `sb_publishable_`), and `AUTH_EMAIL`.
+   `SUPABASE_PUBLISHABLE_KEY` (begins `sb_publishable_`), and optionally `AUTH_EMAIL` (leave it empty for an email + password login).
    **NEVER** use a secret key, service_role key, or database password in the site.
-6. In Supabase > Database > Publications, add `persons`, `interviews`, and
-   `edges` to `supabase_realtime` if you want immediate updates. Otherwise
-   the website checks the shared data every 30 seconds.
+6. Realtime publication is already active for `persons`, `interviews`, and `edges`
+   in the connected NXT project. The website also polls every 30 seconds.
 7. In Authentication, restrict self-registration and configure Auth rate
    limiting as appropriate. Do not enable anonymous sign-in.
 8. Validate from two browsers: sign in, create a test person, start an

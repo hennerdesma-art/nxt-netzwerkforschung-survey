@@ -4,9 +4,9 @@
  * The team password is NOT configured here; store it as a Supabase Auth user password.
  */
 window.NXT_CONFIG = Object.freeze({
-  SUPABASE_URL: "https://REPLACE_WITH_YOUR_PROJECT.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_REPLACE_WITH_YOUR_KEY",
-  AUTH_EMAIL: "team@example.org",
+  SUPABASE_URL: "https://trqhbzzwpamcyxzxaxmk.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_MdUD-YPx8HT7WO7MnOqVLQ_fW5-Cnvn",
+  AUTH_EMAIL: "", // Optional: feste Team-E-Mail fuer einen Passwort-only-Login
   PROJECT_TITLE: "NXT Netzwerkforschung",
   TARGET_COUNT: 40
 });

@@ -5,8 +5,8 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 
 ## 1. Supabase-Projekt einrichten
 
-1. Ein eigenes, von anderen Projekten getrenntes Supabase-Projekt anlegen.
-2. Die Datei `sql/001_initial_schema.sql` im **SQL Editor** ausführen.
+1. Das separate Supabase-Projekt **NXT Netzwerkforschung** wurde in Frankfurt erstellt.
+2. Das Schema `sql/001_initial_schema.sql` und die Live-Synchronisierung sind bereits eingerichtet.
 3. Unter **Authentication > Users** einen Benutzer mit einer gültigen,
    teamverwalteten E-Mail-Adresse anlegen. Als temporäres Passwort das
    getrennt mitgeteilte Team-Passwort setzen. Es steht absichtlich nirgends
@@ -18,12 +18,11 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
    values ('ECHTE_AUTH_UUID', 'NXT Interview-Team', 'admin');
    ```
 
-5. URL und **Publishable Key** (NICHT Secret-/Service-Key!) im Supabase-Dashboard
-   kopieren. In `js/config.js` die Werte `SUPABASE_URL`,
-   `SUPABASE_PUBLISHABLE_KEY` und die verwendete `AUTH_EMAIL` eintragen.
-6. Unter **Database > Publications** in `supabase_realtime` die Tabellen
-   `persons`, `interviews` und `edges` freischalten. Ohne diese Option
-   aktualisiert die Website den Datenstand alle 30 Sekunden.
+5. Projekt-URL und **Publishable Key** sind in `js/config.js` bereits hinterlegt.
+   `AUTH_EMAIL` ist optional: Leer lassen für Login mit E-Mail und Passwort;
+   eine feste Team-E-Mail ermöglicht später einen Passwort-only-Login.
+6. Die Realtime-Publikation fuer `persons`, `interviews` und `edges` ist aktiv;
+   zusätzlich synchronisiert die Website alle 30 Sekunden.
 
 ## 2. GitHub Pages einrichten
 
@@ -37,7 +36,7 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 
 ## 3. Funktionstest mit fiktiven Daten
 
-1. Mit dem Team-Passwort anmelden.
+1. Mit der unter Supabase Auth angelegten E-Mail-Adresse und dem Team-Passwort anmelden.
 2. Eine fiktive Testperson anlegen und ein Interview beginnen.
 3. Eine zweite fiktive Person als Austauschpartner hinterlegen.
 4. Entwurf speichern, dieselbe Website auf einem zweiten Gerät oeffnen
