@@ -7,7 +7,8 @@
   const state = {
     db: null, user: null, member: null, people: [], interviews: [], edges: [], locations: [],
     route: 'dashboard', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
-    channel: null, poll: null, modal: '', draftDirty: false
+    channel: null, poll: null, modal: '', draftDirty: false,
+    network: {controlsOpen:false,layout:'orbit3d',metric:'degree',limit:39,labels:true,hideIsolates:false,onlyInterviewed:false,sizeMode:'degree',depth:72,topic:'all'}
   };
   const I = {
     layout:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -29,6 +30,10 @@
     trash:'<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7"/>',
     save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M7 3v6h9V3M7 21v-9h10v9"/>',
     upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 17v4h16v-4"/>',
+    sliders:'<path d="M4 21v-7m0-4V3m8 18v-4m0-4V3m8 18v-9m0-4V3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="15" r="2"/><circle cx="20" cy="10" r="2"/>',
+    pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L9 17l-4 1 1-4Z"/>',
+    maximize:'<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    sparkles:'<path d="m12 3 1.9 4.8L19 9.7l-5.1 1.3L12 16l-1.9-5L5 9.7l5.1-1.9L12 3Z"/><path d="M5 3v2M4 4h2M19 17v4M17 19h4"/>',
     info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>'
   };
   const icon = (name,size=18) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[name]||I.info}</svg>`;
@@ -37,6 +42,7 @@
   const fmtTime = date => date ? new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(date)) : '\u2014';
   const initials = text => String(text||'?').split(/\s+/).filter(Boolean).slice(0,2).map(a=>a[0]).join('').toUpperCase();
   const clean = text => String(text??'').trim();
+  const clamp = (min,val,max) => Math.max(min, Math.min(max, val));
   const qs = (sel,el=document) => el.querySelector(sel);
   const escapeExcel = value => typeof value==='string' && /^[=+@\-\t\r]/.test(value) ? "'"+value : (value ?? '');
   const personName = id => state.people.find(p=>p.id===id)?.full_name || 'Unbekannte Person';
@@ -101,6 +107,150 @@
       ongoing=state.interviews.filter(i=>i.status==='in_progress').length,declined=state.interviews.filter(i=>i.status==='declined').length;
     return {total,done,ongoing,declined,pending:Math.max(0,total-done-ongoing-declined),edges:state.edges.length,progress:total?Math.round(done/total*100):0};
   }
+
+  function networkPrefs(){
+    if(!state.network)state.network={controlsOpen:false,layout:'orbit3d',metric:'degree',limit:39,labels:true,hideIsolates:false,onlyInterviewed:false,sizeMode:'degree',depth:72,topic:'all'};
+    return state.network;
+  }
+  function computeNetworkModel(){
+    const prefs=networkPrefs();
+    const byId=new Map(state.people.map(person=>[person.id,{person,inDegree:0,outDegree:0,degree:0,building:clean(person.building||'')||'Ohne Gebäude'}]));
+    const interviewStatus=new Map(state.interviews.map(i=>[i.person_id,i.status]));
+    const validEdges=[];const edgePairs=new Set();
+    for(const e of state.edges){
+      if(!byId.has(e.source_person_id)||!byId.has(e.target_person_id)||e.source_person_id===e.target_person_id)continue;
+      validEdges.push(e); edgePairs.add(e.source_person_id+'|'+e.target_person_id);
+      const s=byId.get(e.source_person_id),t=byId.get(e.target_person_id);
+      s.outDegree+=1; t.inDegree+=1;
+    }
+    const nodes=[...byId.values()].map(node=>({...node,degree:node.inDegree+node.outDegree,isolate:false,interviewStatus:interviewStatus.get(node.person.id)||'planned'}));
+    nodes.forEach(n=>{n.isolate=n.degree===0;});
+    const completedCount=nodes.filter(n=>n.interviewStatus==='completed').length;
+    const activeCount=nodes.filter(n=>n.interviewStatus!=='planned').length;
+    const density=nodes.length>1?validEdges.length/(nodes.length*(nodes.length-1)):0;
+    let reciprocatedEdges=0; const mutualPairs=new Set();
+    for(const e of validEdges){
+      const reverse=e.target_person_id+'|'+e.source_person_id;
+      if(edgePairs.has(reverse)){
+        reciprocatedEdges+=1;
+        const key=[e.source_person_id,e.target_person_id].sort().join('|');
+        mutualPairs.add(key);
+      }
+    }
+    const buildingMatrix=new Map();let crossBuilding=0,withinBuilding=0,unknownBuilding=0;
+    const topics={F:0,L:0,S:0,A:0,unknown:0};
+    for(const e of validEdges){
+      const s=byId.get(e.source_person_id),t=byId.get(e.target_person_id);if(!s||!t)continue;
+      const a=clean(s.person.building),b=clean(t.person.building);
+      const key=(a||'Ohne Angabe')+'→'+(b||'Ohne Angabe');buildingMatrix.set(key,(buildingMatrix.get(key)||0)+1);
+      if(!a||!b)unknownBuilding+=1;
+      else if(a!==b)crossBuilding+=1;
+      else withinBuilding+=1;
+      const topic=(e.topics||[])[0];if(Object.hasOwn(topics,topic))topics[topic]++;else topics.unknown++;
+    }
+    const weakAdj=new Map(nodes.map(n=>[n.person.id,new Set()]));
+    for(const e of validEdges){ weakAdj.get(e.source_person_id)?.add(e.target_person_id); weakAdj.get(e.target_person_id)?.add(e.source_person_id); }
+    const components=[]; const seen=new Set();
+    for(const node of nodes){
+      if(seen.has(node.person.id))continue;
+      const stack=[node.person.id], comp=[]; seen.add(node.person.id);
+      while(stack.length){
+        const cur=stack.pop(); comp.push(cur);
+        for(const nxt of weakAdj.get(cur)||[]){ if(!seen.has(nxt)){ seen.add(nxt); stack.push(nxt);} }
+      }
+      components.push(comp);
+    }
+    const sorters={
+      degree:(a,b)=>b.degree-a.degree||a.person.full_name.localeCompare(b.person.full_name,'de'),
+      out:(a,b)=>b.outDegree-a.outDegree||b.degree-a.degree||a.person.full_name.localeCompare(b.person.full_name,'de'),
+      in:(a,b)=>b.inDegree-a.inDegree||b.degree-a.degree||a.person.full_name.localeCompare(b.person.full_name,'de'),
+      alpha:(a,b)=>a.person.full_name.localeCompare(b.person.full_name,'de'),
+      building:(a,b)=>String(a.building).localeCompare(String(b.building),'de')||b.degree-a.degree||a.person.full_name.localeCompare(b.person.full_name,'de')
+    };
+    // Brandes' directed betweenness identifies potential bridging positions.
+    // Normalization is for directed graphs; interpretation is exploratory until survey coverage is high.
+    const adj=new Map(nodes.map(n=>[n.person.id,[]]));
+    validEdges.forEach(e=>adj.get(e.source_person_id)?.push(e.target_person_id));
+    const between=new Map(nodes.map(n=>[n.person.id,0]));
+    for(const origin of adj.keys()){
+      const stack=[],pred=new Map([...adj.keys()].map(k=>[k,[]]));
+      const sigma=new Map([...adj.keys()].map(k=>[k,0]));sigma.set(origin,1);
+      const dist=new Map([...adj.keys()].map(k=>[k,-1]));dist.set(origin,0);
+      const queue=[origin];let start=0;
+      while(start<queue.length){
+        const v=queue[start++];stack.push(v);
+        for(const w of adj.get(v)||[]){
+          if(dist.get(w)<0){dist.set(w,dist.get(v)+1);queue.push(w)}
+          if(dist.get(w)===dist.get(v)+1){sigma.set(w,sigma.get(w)+sigma.get(v));pred.get(w).push(v)}
+        }
+      }
+      const delta=new Map([...adj.keys()].map(k=>[k,0]));
+      while(stack.length){
+        const w=stack.pop();
+        for(const v of pred.get(w))delta.set(v,delta.get(v)+(sigma.get(v)/sigma.get(w))*(1+delta.get(w)));
+        if(w!==origin)between.set(w,between.get(w)+delta.get(w));
+      }
+    }
+    const denominator=(nodes.length-1)*(nodes.length-2);
+    nodes.forEach(n=>{n.betweenness=denominator?between.get(n.person.id)/denominator:0;});
+    const nodesSorted=nodes.slice().sort(sorters[prefs.metric]||sorters.degree);
+    let visible=nodesSorted.filter(n=>!prefs.onlyInterviewed || n.interviewStatus!=='planned');
+    if(prefs.hideIsolates)visible=visible.filter(n=>!n.isolate);
+    const limit=clamp(6,Number(prefs.limit)||nodes.length,Math.max(nodes.length,6));
+    visible=visible.slice(0,limit);
+    const visibleIds=new Set(visible.map(n=>n.person.id));
+    const visibleEdges=validEdges.filter(e=>visibleIds.has(e.source_person_id)&&visibleIds.has(e.target_person_id)&&(prefs.topic==='all'||(e.topics||[])[0]===prefs.topic));
+    const buildingMix=[...buildingMatrix.entries()].map(([key,count])=>({key,count})).sort((a,b)=>b.count-a.count).slice(0,6);
+    return {prefs,nodes,nodesSorted,visible,visibleEdges,edgePairs,counts:{nodes:nodes.length,edges:validEdges.length,isolates:nodes.filter(n=>n.isolate).length,components:components.length,largestComponent:components.reduce((m,c)=>Math.max(m,c.length),0),density,reciprocity:validEdges.length?reciprocatedEdges/validEdges.length:0,mutualPairs:mutualPairs.size,crossBuilding,withinBuilding,unknownBuilding,completedCount,activeCount,coverage:nodes.length?completedCount/nodes.length:0,avgOut:nodes.length?validEdges.length/nodes.length:0},top:{degree:validEdges.length?nodes.slice().sort(sorters.degree).slice(0,5):[],out:validEdges.length?nodes.slice().sort(sorters.out).slice(0,5):[],in:validEdges.length?nodes.slice().sort(sorters.in).slice(0,5):[],between:validEdges.length?nodes.slice().sort((a,b)=>b.betweenness-a.betweenness||a.person.code.localeCompare(b.person.code)).slice(0,5):[]},buildingMix,topics};
+  }
+  function networkInsights(model){
+    const c=model.counts; const insights=[];
+    insights.push(`Beobachtete Dichte: ${(c.density*100).toFixed(1)} % der möglichen gerichteten Kanten. Unbefragte Personen erzeugen keine Nullkanten.`);
+    insights.push(`Beidseitige Nennung: ${(c.reciprocity*100).toFixed(1)} % der berichteten Kanten haben derzeit eine Gegennennung; fehlende Interviews sind keine Verneinung.`);
+    insights.push(`Isolierte Personen: ${c.isolates} von ${c.nodes} haben derzeit keine dokumentierte fachliche Beziehung.`);
+    insights.push(`Netzwerkkomponenten: ${c.components} schwach verbundene Teilnetze; größte Komponente: ${c.largestComponent} Personen.`);
+    if(c.crossBuilding||c.withinBuilding){
+      const total=c.crossBuilding+c.withinBuilding; insights.push(`Zwischen Gebäuden: ${c.crossBuilding} von ${total} räumlich zuordenbaren Kanten (${total?((c.crossBuilding/total)*100).toFixed(1):'0.0'} %). ${c.unknownBuilding} Kanten ohne vollständige Gebäudedaten.`);
+    }
+    insights.push(`Interviewabdeckung: ${c.completedCount} von ${c.nodes} Personen sind vollstaendig abgeschlossen (${(c.coverage*100).toFixed(1)} %).`);
+    return insights;
+  }
+  function renderRankList(title,sub,list,metricKey){
+    if(!list.length)return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>${title}</h2><small>${sub}</small></div>${empty('Noch keine Daten','Fuehre zunaechst Interviews durch.','network')}</div></div>`;
+    return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>${title}</h2><small>${sub}</small></div><div class="activity-list">${list.map((n,index)=>`<div class="activity-entry"><span class="activity-bubble">${index+1}</span><div style="min-width:0"><strong>${esc(n.person.full_name)}</strong><small>${esc(n.person.code)} · ${esc(n.building||'Ohne Gebäude')}</small></div><span class="pill">${metricKey==='degree'?n.degree:metricKey==='out'?n.outDegree:metricKey==='between'?(n.betweenness*100).toFixed(1)+' %':n.inDegree}</span></div>`).join('')}</div></div></div>`;
+  }
+  function renderBuildingMix(model){
+    const items=model.buildingMix;
+    return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Standortmix</h2><small>Haeufigste Gebaeude-Verknuepfungen</small></div>${items.length?`<div class="sheet-list">${items.map(item=>`<div class="sheet-item">${icon('location')}<div><strong>${esc(item.key)}</strong><small>${item.count} gerichtete Beziehungen</small></div><span class="pill">${item.count}</span></div>`).join('')}</div>`:empty('Noch kein Standortmix','Fuer diese Analyse werden Kanten und Gebaeudeinformationen benoetigt.','location')}<div class="notice-box" style="margin-top:18px">${icon('info')}<span>Best Practice: Netzwerkmetriken immer zusammen mit Erhebungsabdeckung und Standortdaten interpretieren.</span></div></div></div>`;
+  }
+  function renderTopicMix(model){
+    const label={F:'Forschung',L:'Lehre',S:'Selbstverwaltung',A:'Sonstiges',unknown:'Nicht zugeordnet'};
+    const data=Object.entries(model.topics),max=Math.max(1,...data.map(([,v])=>v));
+    return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Austauschbereiche</h2><small>B2-Kategorien</small></div><div class="topic-bars">${data.map(([key,count])=>`<div class="topic-row"><div><strong>${label[key]}</strong><span>${count}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(count/max*100)}%"></div></div></div>`).join('')}</div><div class="network-caption">Mehrfachnennungen sind hier nicht berücksichtigt, da der Fragebogen je Kante einen Hauptbereich speichert.</div></div></div>`;
+  }
+  function renderNetworkControls(model){
+    const p=model.prefs; const maxNodes=Math.max(6, state.people.length || 6);
+    return `<div class="network-controls"><div class="network-controls-grid"><div class="field"><label>Layout</label><select data-network-input="layout"><option value="orbit3d" ${p.layout==='orbit3d'?'selected':''}>3D Orbit</option><option value="building" ${p.layout==='building'?'selected':''}>Cluster nach Gebaeude</option><option value="circle" ${p.layout==='circle'?'selected':''}>2D Kreis</option></select></div><div class="field"><label>Sortierung</label><select data-network-input="metric"><option value="degree" ${p.metric==='degree'?'selected':''}>Gesamtgrad</option><option value="out" ${p.metric==='out'?'selected':''}>Out-Degree</option><option value="in" ${p.metric==='in'?'selected':''}>In-Degree</option><option value="building" ${p.metric==='building'?'selected':''}>Gebaeude</option><option value="alpha" ${p.metric==='alpha'?'selected':''}>Alphabetisch</option></select></div><div class="field"><label>Austauschbereich</label><select data-network-input="topic"><option value="all" ${p.topic==='all'?'selected':''}>Alle Bereiche</option><option value="F" ${p.topic==='F'?'selected':''}>Forschung</option><option value="L" ${p.topic==='L'?'selected':''}>Lehre</option><option value="S" ${p.topic==='S'?'selected':''}>Selbstverwaltung</option><option value="A" ${p.topic==='A'?'selected':''}>Sonstiges</option></select></div><div class="field"><label>Sichtbare Knoten <span>${Math.min(maxNodes, Number(p.limit)||maxNodes)} / ${maxNodes}</span></label><input type="range" min="6" max="${maxNodes}" step="1" value="${clamp(6, Number(p.limit)||maxNodes, maxNodes)}" data-network-input="limit"></div><div class="field"><label>3D-Tiefe <span>${Number(p.depth)||72}%</span></label><input type="range" min="0" max="100" step="1" value="${Number(p.depth)||72}" data-network-input="depth"></div></div><div class="network-toggle-row"><label class="q-toggle"><input type="checkbox" data-network-input="labels" ${p.labels?'checked':''}><span><strong>Beschriftungen anzeigen</strong><small>Codes und Namen direkt an den Knoten einblenden.</small></span></label><label class="q-toggle"><input type="checkbox" data-network-input="hideIsolates" ${p.hideIsolates?'checked':''}><span><strong>Isolierte Personen ausblenden</strong><small>Fokus auf aktiv verbundene Knoten.</small></span></label><label class="q-toggle"><input type="checkbox" data-network-input="onlyInterviewed" ${p.onlyInterviewed?'checked':''}><span><strong>Nur interviewte Personen</strong><small>Filtert offene Personen ohne Interview aus.</small></span></label><label class="q-toggle"><input type="checkbox" data-network-input="sizeMode" ${p.sizeMode==='degree'?'checked':''}><span><strong>Knotengröße nach Verbindungsgrad</strong><small>Wenn deaktiviert, erhalten alle Knoten dieselbe Groesse.</small></span></label></div></div>`;
+  }
+  function renderNetworkScene(model,fullscreen=false){
+    const prefs=model.prefs,visible=model.visible.length,edges=model.visibleEdges.length;
+    const buildings=[...new Set(model.visible.map(n=>n.building))].sort((a,b)=>a.localeCompare(b,'de'));
+    const buildingLegend=buildings.map(building=>`<span class="building-legend-item"><i style="background:${window.NXTNetworkViz?.colorFor?.(building)||'#008b92'}"></i>${esc(building==='Ohne Gebäude'?'Standort offen':`Geb. ${building}`)}</span>`).join('');
+    return `<div class="network-scene ${fullscreen?'fullscreen':''}"><div class="network-canvas-shell"><canvas class="network-graph-canvas" tabindex="0" role="img" aria-label="Interaktives gerichtetes Netzwerk mit ${visible} Personen und ${edges} Kanten. Mit Maus oder Finger drehen, mit Mausrad zoomen. Pfeiltasten verändern die Ansicht.">Ihr Browser unterstützt die Netzwerkvisualisierung nicht.</canvas><div class="network-tooltip" hidden></div></div><div class="network-scene-meta"><span class="pill">${visible} von ${model.nodes.length} Knoten</span><span class="pill">${edges} sichtbare Kanten</span><span class="pill">${prefs.layout==='orbit3d'?'Interaktives 3D':prefs.layout==='building'?'Gebäude-Cluster':'2D Kreis'}</span></div><div class="building-legend" aria-label="Legende der Gebäudefarben">${buildingLegend}</div><p class="network-selection" aria-live="polite">Knoten auswählen, um Beziehungen hervorzuheben.</p><p class="network-legend">Farbe: Gebäude · Größe: ${prefs.sizeMode==='degree'?'Gesamtgrad':'einheitlich'} · Pfeile: Richtung der Nennung · 3D-Positionen: algorithmisch, keine realen Standorte.</p></div>`;
+  }
+  function mountNetworkVisuals(host=document){
+    if(!window.NXTNetworkViz?.mount)return;
+    const model=computeNetworkModel();
+    const data={nodes:model.visible.map(n=>({id:n.person.id,code:n.person.code,label:n.person.full_name,building:n.building,degree:n.degree,inDegree:n.inDegree,outDegree:n.outDegree})),edges:model.visibleEdges.map(e=>({source:e.source_person_id,target:e.target_person_id})),prefs:{...model.prefs}};
+    host.querySelectorAll('.network-scene').forEach(scene=>window.NXTNetworkViz.mount(scene,data));
+  }
+  function openNetworkFullscreen(){
+    const model=computeNetworkModel(); const host=qs('#modal-host'); if(!host)return;
+    host.innerHTML=`<div class="modal-backdrop"><div class="modal modal-network-fullscreen" role="dialog" aria-modal="true" aria-label="Netzwerk im Vollbild"><div class="modal-head"><div><h2>Netzwerkanalyse · Vollbild</h2><p style="margin:6px 0 0;color:var(--muted);font-size:12px">Ansicht drehen, zoomen und Knoten erkunden.</p></div><button type="button" class="icon-button" data-action="close-modal" aria-label="Schließen">${icon('x')}</button></div><div class="modal-body">${renderNetworkControls(model)}${renderNetworkScene(model,true)}<div class="notice-box" style="margin-top:18px">${icon('sparkles')}<span>Farben kennzeichnen Gebäude; Pfeile zeigen die Nennungsrichtung. Die räumliche Anordnung ist eine explorative Netzwerkprojektion.</span></div></div></div></div>`;
+    window.NXTNetworkViz?.cleanup?.();mountNetworkVisuals(host);
+    const dialog=qs('.modal-network-fullscreen',host);
+    try { dialog?.requestFullscreen?.().catch(()=>{}); } catch(_error) {/* Overlay fallback */}
+  }
   const tabs=[['dashboard','layout','Dashboard'],['people','users','Personen'],['interviews','clipboard','Interviews'],['network','network','Netzwerk'],['export','download','Datenexport']];
   function shell(page){
     const team=state.member?.display_name||'Interview-Team';
@@ -109,7 +259,9 @@
   function render(){
     if(!state.user||!state.member){renderLogin();return;}
     const pages={dashboard:renderDashboard,people:renderPeople,interviews:renderInterviews,interview:renderInterview,network:renderNetwork,export:renderExport};
+    window.NXTNetworkViz?.cleanup?.();
     root.innerHTML=shell((pages[state.route]||renderDashboard)());
+    if(state.route==='network')mountNetworkVisuals(root);
   }
   function pageHead(label,title,description,actions=''){
     return `<div class="page-head"><div><div class="eyebrow">${label}</div><h1>${title}</h1><p>${description}</p></div>${actions?`<div class="page-actions">${actions}</div>`:''}</div>`;
@@ -310,24 +462,22 @@
     return pageHead('Interviewdurchf\u00fchrung',esc(p?.full_name||'Interview'),`${esc(p?.code||'')} \u00b7 Fragebogen V7 · A1–A6, B1–B6, C1–C9 · Antworten zentral speichern.`,`<span id="dirty-indicator" class="pill ${state.draftDirty?'orange':'green'}">${state.draftDirty?'Ungespeichert':'Gespeichert'}</span><button class="btn btn-light" data-action="back-to-interviews">${icon('chevron')} Zur \u00dcbersicht</button>`)+
     `<div class="interview-layout"><aside class="panel interview-rail">${stepNames.map((name,index)=>`<button type="button" class="step-button ${state.step===index?'active':''}" data-action="step" data-step="${index}" aria-current="${state.step===index?'step':'false'}"><span class="step-index">${index+1}</span><span class="step-name">${name}</span></button>`).join('')}<div class="step-separator"></div><div style="padding:10px 8px;font-size:11px;line-height:1.7;color:var(--muted)">${icon('shield',15)} Jede Speicherung wird auf Bearbeitungskonflikte gepr\u00fcft.</div></aside><section class="panel interview-form-card">${[formStepA,formStepB,formStepC,formStepD][state.step]()}<div class="form-footer"><button type="button" class="btn btn-light" data-action="previous-step" ${state.step===0?'disabled':''}>Zur\u00fcck</button><div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn btn-ghost" data-action="save-draft">${icon('save')} Entwurf sichern</button>${state.step<3?`<button type="button" class="btn btn-primary" data-action="next-step">Weiter ${icon('arrow')}</button>`:`<button type="button" class="btn btn-primary" data-action="save-completed">${icon('check')} ${consentNo(f.answers.Einwilligung)?'Ablehnung dokumentieren':'Abschließen'}</button>`}</div></div></section></div>`;
   }
+
   function renderNetwork(){
-    const c=counts(), degrees=new Map(state.people.map(p=>[p.id,0]));
-    state.edges.forEach(e=>{degrees.set(e.source_person_id,(degrees.get(e.source_person_id)||0)+1);degrees.set(e.target_person_id,(degrees.get(e.target_person_id)||0)+1);});
-    const top=[...state.people].sort((a,b)=>(degrees.get(b.id)||0)-(degrees.get(a.id)||0)).slice(0,16);
-    const positions=new Map(top.map((p,i)=>[p.id,{x:320+130*Math.cos(2*Math.PI*i/Math.max(top.length,1)-Math.PI/2),y:155+117*Math.sin(2*Math.PI*i/Math.max(top.length,1)-Math.PI/2)}]));
-    const edges=state.edges.filter(e=>positions.has(e.source_person_id)&&positions.has(e.target_person_id));
-    const svg=top.length?`<svg viewBox="0 0 640 310" role="img" aria-label="Netzwerkvorschau der Personen und Austauschbeziehungen">${edges.map(e=>{const a=positions.get(e.source_person_id),b=positions.get(e.target_person_id);return `<line class="network-link" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"><title>${esc(personName(e.source_person_id))} zu ${esc(personName(e.target_person_id))}</title></line>`;}).join('')}${top.map(p=>{const a=positions.get(p.id),deg=degrees.get(p.id)||0;return `<g><circle class="network-node" cx="${a.x}" cy="${a.y}" r="${Math.min(17,10+deg*1.8)}" fill="${deg?'#008b92':'#94bcc0'}"><title>${esc(p.full_name)}: ${deg} Verbindungen</title></circle><text text-anchor="middle" x="${a.x}" y="${a.y+31}">${esc(p.code)}</text></g>`;}).join('')}</svg>`:empty('Noch kein Netzwerk','Sobald die ersten Personen angelegt werden, erscheint hier eine Vorschau.','network');
-    const topDegree=[...state.people].sort((a,b)=>(degrees.get(b.id)||0)-(degrees.get(a.id)||0)).slice(0,5);
-    return pageHead('Netzwerkmonitor','Fachlicher Austausch','Erste Vorschau des gerichteten Netzwerks aus den erfassten Interviewkanten.',`<button class="btn btn-primary" data-action="navigate" data-route="export">${icon('download')} Kanten exportieren</button>`)+
-    `<div class="network-kpi">${stat('Knoten / Personen',c.total,'Erfasste Mitarbeitende','users')}${stat('Gerichtete Kanten',c.edges,'Quelle \u2192 Ziel','network')}${stat('Beziehungslast',c.total?(c.edges/c.total).toFixed(2):'0.00','Kanten je Person (Mittel)','chart')}</div><div class="dash-grid"><div class="panel"><div class="panel-head" style="padding:22px 22px 0"><h2>Netzwerkvorschau</h2><span class="pill">${top.length} sichtbare Knoten</span></div><div class="network-visual">${svg}</div><div class="network-caption">Vereinfachte Vorschau (max. 16 Knoten). Die vollst\u00e4ndige, gerichtete Kantenliste ist im Excel-Export enthalten. Keine automatische Reziprozit\u00e4t.</div></div><div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Am st\u00e4rksten verbunden</h2><small>Ein- und ausgehende Kanten</small></div>${topDegree.length?topDegree.map((p,index)=>`<div class="activity-entry"><span class="activity-bubble">${index+1}</span><div><strong>${esc(p.full_name)}</strong><small>${esc(p.code)}</small></div><span class="pill">${degrees.get(p.id)||0} Kanten</span></div>`).join(''):empty('Keine Netzwerkdaten','Erfasse zun\u00e4chst Interviews.','network')}<div class="notice-box" style="margin-top:20px">${icon('info')}<span>Die Visualisierung ist eine explorative Vorschau, keine statistische Netzwerkanalyse. Exportiere f\u00fcr Gephi, VennMaker oder eine externe Analyse.</span></div></div></div></div>`;
+    const model=computeNetworkModel(), c=model.counts, insights=networkInsights(model);
+    return pageHead('Netzwerkmonitor','Fachlicher Austausch & Analyse','Gerichtete Austauschbeziehungen – interaktiv erkunden, vergleichen und analysieren.',`<button class="btn btn-light" data-action="toggle-network-controls">${icon('sliders')} Optionen</button><button class="btn btn-light" data-action="open-network-fullscreen">${icon('maximize')} Vollbild</button><button class="btn btn-primary" data-action="navigate" data-route="export">${icon('download')} Kanten exportieren</button>`)+
+    `<div class="network-kpi network-kpi-extended">${stat('Knoten / Personen',c.nodes,'Erfasste Mitarbeitende','users')}${stat('Gerichtete Kanten',c.edges,'Quelle → Ziel','network')}${stat('Netzwerkdichte',(c.density*100).toFixed(1)+' %','Kanten / theoretische Maximalzahl','chart')}${stat('Beidseitige Nennung',(c.reciprocity*100).toFixed(1)+' %','Beobachtet; abhängig von Rücklaufquote','refresh')}${stat('Isolierte Personen',c.isolates,'Knoten ohne dokumentierte Kanten','alert')}${stat('Interviewabdeckung',(c.coverage*100).toFixed(1)+' %',`${c.completedCount} abgeschlossen · ${c.activeCount} aktiv`, 'check')}</div>
+    <div class="network-layout-grid"><div class="panel network-workbench"><div class="panel-head network-panel-head"><div><h2>Interaktive Netzwerkansicht</h2><small>Oben rechts lassen sich Darstellung und Layout feinjustieren.</small></div><div class="network-panel-actions"><button class="icon-button" data-action="toggle-network-controls" aria-label="Darstellung bearbeiten" title="Darstellung bearbeiten">${icon('pencil')}</button><button class="icon-button" data-action="open-network-fullscreen" aria-label="Netzwerk im Vollbild">${icon('maximize')}</button></div></div>${model.prefs.controlsOpen?renderNetworkControls(model):''}<div class="network-visual network-visual-large">${renderNetworkScene(model,false)}</div><div class="network-caption">Die Filter wirken auf die Netzwerkzeichnung; die Kennzahlen beziehen sich weiterhin auf alle bisher erfassten Kanten. Unbefragte Personen sind nicht automatisch isoliert. 3D-Anordnungen sind keine räumlichen Distanzen.</div></div><div class="network-side-column"><div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Interpretationshinweise</h2><small>Empfohlene Kennzahlen</small></div><div class="insight-list">${insights.map((item,index)=>`<div class="insight-item"><span>${index+1}</span><p>${esc(item)}</p></div>`).join('')}</div><div class="notice-box" style="margin-top:18px">${icon('sparkles')}<span>Best Practice: Dichte, Reziprozität und Zentralität immer gemeinsam mit Rücklaufquote und fehlenden Interviews lesen.</span></div></div></div>${renderBuildingMix(model)}${renderTopicMix(model)}</div></div>
+    <div class="dash-grid" style="margin-top:20px">${renderRankList('Zentralste Personen','Gesamtgrad (In + Out)',model.top.degree,'degree')}${renderRankList('Aktive Nennungen / Out-Degree','Wie viele Partner nennt diese Person?',model.top.out,'out')}${renderRankList('Häufig genannte Personen / In-Degree','Wie oft wird diese Person genannt?',model.top.in,'in')}${renderRankList('Vermittelnde Positionen','Betweenness (gerichtete kürzeste Pfade)',model.top.between,'between')}</div>`;
   }
+
   function renderExport(){
     const c=counts(),canExport=state.member?.role==='admin';
     const sheets=[['Gesamt_Personen','Codierte Antworten: eine Zeile je Person, wie im Original'],['Gesamt_Netzwerk','B1–B6: alle möglichen Personenpaare, inkl. Nullkanten'],['Codebuch','Originalvariablen und Kodierung aus Excel V7'],['Persons','Personenmerkmale, ID, Rolle, Geb\u00e4ude, B\u00fcro'],['Interviews','Interviewer, Zeitpunkt, Status und Version'],['Answers','Frage / Antwort je Interview'],['Edges','Gerichtete Netzwerkkanten mit Frequenz, Art und Inhalt'],['Locations','Weitere Orte und Aufenthaltsfrequenzen'],['Nodes','Gephi-taugliche Knotenliste'],['Datenqualitaet','Offene Angaben und Erhebungsstatus']];
     return pageHead('Daten & Auswertung','Datenexport','Lade die gemeinsamen Interviewdaten als Excel-Arbeitsmappe herunter. Die Daten werden direkt aus Supabase gelesen.')+
       `<div class="export-grid"><div><section class="export-feature"><div class="feature-icon">${icon('download',27)}</div><div><span class="eyebrow">Wissenschaftlicher Export</span><h2>Ein Download. Alle Daten.</h2><p>Der Excel-Export enth\u00e4lt Personen, die Originalantworten, r\u00e4umliche Informationen und gerichtete Netzwerkbeziehungen in getrennten Tabellenbl\u00e4ttern.</p><button class="btn btn-primary" data-action="export-xlsx" ${canExport?'':'disabled'}>${icon('download')} Excel (.xlsx) herunterladen</button>${!canExport?'<p style="margin-top:10px">Export nur mit Administrator-Rechten verf\u00fcgbar.</p>':''}</div></section><div class="notice-box warn" style="margin-top:20px">${icon('alert')}<span>Der Export enth\u00e4lt personenbezogene Forschungsdaten. Nicht in GitHub hochladen und nur \u00fcber zugelassene Hochschulablagen weitergeben. Vor der Erhebung Datenschutz und Hochschulfreigabe pr\u00fcfen.</span></div></div><div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Enthaltene Tabellen</h2><span class="pill">${sheets.length} Sheets</span></div><div class="sheet-list">${sheets.map(([name,desc])=>`<div class="sheet-item">${icon('file')}<div><strong>${name}</strong><small>${desc}</small></div>${icon('check',14)}</div>`).join('')}</div></div></div></div><div class="stat-grid" style="margin-top:22px">${stat('Personen',c.total,'F\u00fcr Nodes','users')}${stat('Kanten',c.edges,'F\u00fcr Edges','network')}${stat('Abgeschlossen',c.done,'Verwertbare Interviews','check')}${stat('Offene Interviews',c.pending+c.ongoing,'Datenqualit\u00e4t pr\u00fcfen','clock')}</div>`;
   }
-  function clearModal(){state.modal='';const host=qs('#modal-host');if(host)host.innerHTML='';}
+  function clearModal(){state.modal='';if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{});}const host=qs('#modal-host');if(host)host.innerHTML='';if(state.route==='network'){window.NXTNetworkViz?.cleanup?.();mountNetworkVisuals(root);}}
   function openPersonModal(){
     const used=new Set(state.people.map(p=>p.code));let n=1;while(used.has('NXT-'+String(n).padStart(3,'0')))n++;
     const host=qs('#modal-host');if(!host)return;
@@ -355,6 +505,26 @@
     const el=e.target;
     if(el.id==='people-search'){state.query=el.value;refreshPeopleTable();return;}
     if(el.id==='people-filter'){state.filter=el.value;refreshPeopleTable();return;}
+    if(el.dataset.networkInput){
+      if(el.type==='range'&&e.type==='input'){
+        const label=el.closest('.field')?.querySelector('label span');if(label)label.textContent=el.value+(el.dataset.networkInput==='depth'?'%':' / '+Math.max(6,state.people.length));
+        return;
+      }
+      if(el.type!=='range'&&e.type==='input')return;
+      const prefs=networkPrefs(), key=el.dataset.networkInput;
+      if(key==='sizeMode')prefs.sizeMode=el.checked?'degree':'flat';
+      else if(['labels','hideIsolates','onlyInterviewed'].includes(key))prefs[key]=el.checked;
+      else if(['limit','depth'].includes(key))prefs[key]=Number(el.value);
+      else prefs[key]=el.value;
+      const dialog=qs('.modal-network-fullscreen');
+      if(dialog){
+        window.NXTNetworkViz?.cleanup?.();
+        const old=dialog.querySelector('.network-scene');
+        if(old)old.outerHTML=renderNetworkScene(computeNetworkModel(),true);
+        mountNetworkVisuals(dialog);
+      }else if(state.route==='network')render();
+      return;
+    }
     if(!state.form)return;
     if(el.id==='peer-search'){
       state.peerQuery=el.value;const list=qs('#peer-results');if(list)list.innerHTML=renderPeerResults();return;
@@ -650,6 +820,8 @@
     if(a==='open-nav'){qs('#shell')?.classList.add('nav-open');return;}
     if(a==='close-nav'){qs('#shell')?.classList.remove('nav-open');return;}
     if(a==='refresh'){try{await reloadData();toast('Daten aktualisiert.','success');}catch(err){toast(err.message,'error');}return;}
+    if(a==='toggle-network-controls'){const prefs=networkPrefs();prefs.controlsOpen=!prefs.controlsOpen;if(state.route==='network')render();return;}
+    if(a==='open-network-fullscreen'){openNetworkFullscreen();return;}
     if(a==='logout'){if(canLeave())await logout();return;}
     if(a==='add-person'){openPersonModal();return;}
     if(a==='import-people'){openImportModal();return;}
