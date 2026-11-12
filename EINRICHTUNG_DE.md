@@ -69,3 +69,14 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 - **Einstellungen:** Ausschließlich Administratoren können einen einzelnen Interviewdatensatz nach expliziter Bestätigung der Personen-ID zurücksetzen. Die Person bleibt erhalten; Interviewantworten, ausgehende Kanten und Orte werden gelöscht und der Reset serverseitig protokolliert.
 - Benötigte neue Migrationen im Supabase SQL Editor: `sql/004_admin_reset_interview.sql` und **danach** `sql/005_harden_reset_rpc.sql` (für das verbundene Projekt bereits ausgeführt). Nicht bei bereits vorhandener Migration erneut anwenden.
 - Bei gleichzeitigen Änderungen muss zuerst die Seite neu geladen werden. Vor echten Resets eine Sicherung über den Excel-Export erstellen.
+
+## 4. Persönliche Teamzugänge verwalten
+
+1. Als Administrator auf der Website einloggen und **Einstellungen → Team & Zugänge** öffnen.
+2. Einen Namen, eine gültige E-Mail-Adresse und die Rolle **Interviewer** oder **Administrator** auswählen.
+3. **Einladungslink erstellen** und den Link **ausschließlich der eingeladenen Person** über einen sicheren Kanal weitergeben (z. B. Teams). Keine Einladungslinks öffentlich in GitHub speichern.
+4. Das neue Mitglied öffnet den Link zeitnah und vergibt ein eigenes Passwort (mindestens zwölf Zeichen).
+5. Danach mit **persönlicher E-Mail und persönlichem Passwort** einloggen. Der Teamadministrator sieht im selben Bereich, welche Konten aktiv oder noch nicht bestätigt sind.
+6. Rollenänderungen und Deaktivierungen sind ausschließlich Administratoren erlaubt und werden protokolliert. Das eigene aktive Administratorkonto lässt sich hier nicht deaktivieren.
+
+**Technik:** Supabase Edge Function `team-access` (nur nach selbst verifizierter Benutzer-JWT und serverseitiger Administratorprüfung); Auth Admin API und geheime Schlüssel niemals im Browser. Die SQL-Migration `sql/007_team_access_audit.sql` wurde auf das NXT-Projekt angewandt. Das Kopieren des Einladungslinks funktioniert ohne SMTP. Die automatische Versendung von Auth-E-Mails an beliebige E-Mail-Adressen ist auf dem Supabase-Standardserver eingeschränkt; dafür wäre ein eigenes SMTP-Setup notwendig.

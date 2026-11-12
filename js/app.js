@@ -7,7 +7,7 @@
   const state = {
     db: null, user: null, member: null, people: [], interviews: [], edges: [], locations: [],
     route: 'dashboard', networkLayer:'social', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
-    channel: null, poll: null, modal: '', draftDirty: false,
+    channel: null, poll: null, modal: '', draftDirty: false, settingsTab:'interviews',
     network: {controlsOpen:true,layout:'orbit3d',metric:'degree',limit:39,labels:true,hideIsolates:false,onlyInterviewed:false,sizeMode:'degree',depth:72,topic:'all',studioTab:'graphs',multipleEdges:true,showLoops:false,categoryField:'building',enabledCategories:null,componentMode:'weak',componentMin:1,recalculateComponents:true,spread:1,nodeMultiplier:1,canvasHeight:500,showArrows:true,focusId:'',preview:null,previewName:''},resetAudit:[],settingsSearch:'',resetTarget:null
   };
   const I = {
@@ -58,7 +58,7 @@
     root.innerHTML=`<div class="auth-screen"><div class="auth-visual"><img class="brand-logo" src="./assets/nxt-logo.png" alt="Hochschule Reutlingen NXT Logo"><div><span class="auth-tag">${icon('shield',15)} Forschungsplattform</span><h1 class="auth-title">Ein Platz f\u00fcr <span>unser Netzwerk.</span></h1><p class="auth-sub">Interviewplattform mit gemeinsamer Datenbank, Netzwerkbeziehungen und wissenschaftlichem Excel-Export.</p></div><small class="auth-foot">NXT | Hochschule Reutlingen</small></div><div class="auth-right"><div class="auth-card"><div class="auth-icon">${icon('lock',26)}</div><span class="eyebrow" style="display:block;margin-top:24px">Einrichtung</span><h2>Backend verbinden</h2><p>Der Quellcode ist installiert. Vor der Nutzung muss ein eigenes Supabase-Projekt mit gesch\u00fctztem Zugang angebunden werden.</p>${message?`<div class="form-error">${esc(message)}</div>`:''}<div class="info-note">1. SQL-Datei <strong>sql/001_initial_schema.sql</strong> ausf\u00fchren.<br>2. Im Supabase-Dashboard einen Auth-Benutzer mit dem Team-Passwort erstellen.<br>3. In <strong>js/config.js</strong> die Projekt-URL und den Publishable Key eintragen (Login-E-Mail ist optional).<br>4. Benutzer-ID in <strong>survey_members</strong> freischalten.<br><br>Weitere Details stehen in README.md.</div></div></div></div>`;
   }
   function renderLogin(error=''){
-    root.innerHTML=`<div class="auth-screen"><div class="auth-visual"><img class="brand-logo" src="./assets/nxt-logo.png" alt="Hochschule Reutlingen - NXT"><div><span class="auth-tag">${icon('network',15)} Forschungsprojekt | 2026</span><h1 class="auth-title">Vernetzung <span>verstehen.</span><br>Wissen verbinden.</h1><p class="auth-sub">Digitale Interviewerfassung f\u00fcr die Netzwerkforschung an der Fakult\u00e4t NXT. Gemeinsam erheben, sicher verwalten und wissenschaftlich auswerten.</p><div class="auth-detail"><span>Personen &amp; Beziehungen</span><span>Live synchronisiert</span><span>Excel &amp; Netzwerkanalyse</span></div></div><small class="auth-foot">NXT | REUTLINGEN UNIVERSITY</small></div><div class="auth-right"><div class="auth-card"><div class="auth-icon">${icon('lock',26)}</div><span class="eyebrow" style="display:block;margin-top:24px">Gesch\u00fctzter Bereich</span><h2>Willkommen zur\u00fcck.</h2><p>Melde dich mit dem Team-Passwort an, um Interviews sicher zu erfassen und die gemeinsamen Ergebnisse einzusehen.</p><form id="login-form">${config.AUTH_EMAIL ? "" : `<div class="field"><label for="email">E-Mail-Adresse</label><input id="email" name="email" type="email" autocomplete="email" placeholder="name@hochschule.de" required></div>`}<div class="field"><label for="password">Passwort</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Passwort eingeben" required minlength="6"></div>${error?`<div class="form-error">${esc(error)}</div>`:''}<button class="btn btn-primary" type="submit">${icon('lock')} Sicher anmelden ${icon('arrow')}</button></form><div class="info-note">Alle Interviews werden in der zentralen Datenbank gespeichert. Das Passwort wird nicht im Website-Code hinterlegt.</div></div></div></div>`;
+    root.innerHTML=`<div class="auth-screen"><div class="auth-visual"><img class="brand-logo" src="./assets/nxt-logo.png" alt="Hochschule Reutlingen - NXT"><div><span class="auth-tag">${icon('network',15)} Forschungsprojekt | 2026</span><h1 class="auth-title">Vernetzung <span>verstehen.</span><br>Wissen verbinden.</h1><p class="auth-sub">Digitale Interviewerfassung f\u00fcr die Netzwerkforschung an der Fakult\u00e4t NXT. Gemeinsam erheben, sicher verwalten und wissenschaftlich auswerten.</p><div class="auth-detail"><span>Personen &amp; Beziehungen</span><span>Live synchronisiert</span><span>Excel &amp; Netzwerkanalyse</span></div></div><small class="auth-foot">NXT | REUTLINGEN UNIVERSITY</small></div><div class="auth-right"><div class="auth-card"><div class="auth-icon">${icon('lock',26)}</div><span class="eyebrow" style="display:block;margin-top:24px">Gesch\u00fctzter Bereich</span><h2>Willkommen zur\u00fcck.</h2><p>Melde dich mit deiner E-Mail-Adresse und deinem persönlichen Passwort an, um Interviews sicher zu erfassen und die gemeinsamen Ergebnisse einzusehen.</p><form id="login-form">${config.AUTH_EMAIL ? "" : `<div class="field"><label for="email">E-Mail-Adresse</label><input id="email" name="email" type="email" autocomplete="email" placeholder="name@hochschule.de" required></div>`}<div class="field"><label for="password">Passwort</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Passwort eingeben" required minlength="6"></div>${error?`<div class="form-error">${esc(error)}</div>`:''}<button class="btn btn-primary" type="submit">${icon('lock')} Sicher anmelden ${icon('arrow')}</button></form><div class="info-note">Alle Interviews werden in der zentralen Datenbank gespeichert. Das Passwort wird nicht im Website-Code hinterlegt.</div></div></div></div>`;
     (config.AUTH_EMAIL ? qs('#password') : qs('#email'))?.focus();
   }
   async function start(){
@@ -67,15 +67,18 @@
     if(!window.supabase?.createClient){showSetup('Die Supabase-Bibliothek konnte nicht geladen werden. Bitte Internetzugang und Skript-Freigaben pr\u00fcfen.');return;}
     try{
       state.db=window.supabase.createClient(config.SUPABASE_URL,config.SUPABASE_PUBLISHABLE_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+      const invitation=await window.NXTTeamAccess?.acceptInvite?.(state.db);
+      if(invitation?.user){await authenticated(invitation.user,true);return;}
       const {data,error}=await state.db.auth.getSession();if(error) throw error;
       if(data.session){await authenticated(data.session.user);}else{renderLogin();}
     }catch(e){renderLogin('Verbindung zur Anmeldung fehlgeschlagen. '+(e.message||''));}
   }
-  async function authenticated(user){
+  async function authenticated(user,setupPassword=false){
     state.user=user;
     const {data,error}=await state.db.from('survey_members').select('user_id,display_name,role,active').eq('user_id',user.id).maybeSingle();
     if(error || !data?.active){await state.db.auth.signOut();state.user=null;renderLogin('Dieses Konto ist noch nicht f\u00fcr die Forschungsumfrage freigeschaltet.');return;}
     state.member=data;
+    if(setupPassword){root.innerHTML=window.NXTTeamAccess.renderPasswordScreen(user);window.NXTTeamAccess.mountPasswordForm(root,{db:state.db,user,onSuccess:async()=>authenticated(user,false)});return;}
     try{await reloadData(false);subscribeChanges();render();}catch(e){showSetup('Die Anmeldung funktioniert, aber die Datentabellen sind nicht erreichbar: '+(e.message||''));}
   }
   async function reloadData(reRender=true){
@@ -84,7 +87,7 @@
     result.forEach((r,i)=>{if(r.error)throw Error(tables[i]+': '+r.error.message);});
     [state.people,state.interviews,state.edges,state.locations]=result.map(r=>r.data||[]);
     state.people.sort((a,b)=>a.full_name.localeCompare(b.full_name,'de'));
-    if(reRender && !(state.route==='interview' && state.draftDirty))render();
+    if(reRender && !(state.route==='interview' && state.draftDirty) && !(state.route==='settings' && state.settingsTab==='team'))render();
   }
   function subscribeChanges(){
     if(state.channel)return;
@@ -277,6 +280,7 @@
     window.NXTNetworkViz?.cleanup?.();
     window.NXTCampus?.cleanup?.();
     root.innerHTML=shell((pages[state.route]||renderDashboard)());
+    if(state.route==='settings'&&state.settingsTab==='team'&&state.member?.role==='admin')window.NXTTeamAccess?.mount?.(qs('#nxt-team-access'),{db:state.db,currentUserId:state.user.id});
     if(state.route==='network'){
       if(state.networkLayer==='geographic'){
         const campusRoot=root.querySelector('#nxt-campus-workspace');
@@ -529,6 +533,9 @@
       toast('Graphdatei lokal heruntergeladen. Bitte geschützt aufbewahren.','success');
     }catch(err){toast('Graph-Export fehlgeschlagen: '+(err.message||err),'error')}
   }
+  function settingsTabs(){
+    return `<div class="nxt-settings-tabs" role="tablist" aria-label="Einstellungen"><button class="nxt-settings-tab" role="tab" aria-selected="${state.settingsTab==='interviews'}" data-action="settings-tab" data-tab="interviews">Interviews zurücksetzen</button><button class="nxt-settings-tab" role="tab" aria-selected="${state.settingsTab==='team'}" data-action="settings-tab" data-tab="team">Team & Zugänge</button></div>`;
+  }
   function renderSettingsRows(){
     const q=state.settingsSearch.toLocaleLowerCase('de'),interviewsByPerson=new Map(state.interviews.map(i=>[i.person_id,i]));
     const records=state.people.slice().sort((a,b)=>a.code.localeCompare(b.code,'de',{numeric:true})).filter(p=>`${p.code} ${p.full_name} ${statusFor(p.id)}`.toLocaleLowerCase('de').includes(q));
@@ -537,8 +544,9 @@
   }
   function renderSettings(){
     if(state.member?.role!=='admin')return pageHead('Administration','Einstellungen','Administrativer Bereich für dieses Forschungsprojekt.')+`<div class="panel panel-inner"><div class="notice-box warn">${icon('lock')}<span>Das Zurücksetzen ist ausschließlich für Administratoren freigegeben.</span></div></div>`;
+    if(state.settingsTab==='team')return pageHead('Administration','Team & Zugänge','Neue Mitglieder mit eigener E-Mail-Adresse einladen, Rollen zuweisen und Zugänge verwalten.')+settingsTabs()+(window.NXTTeamAccess?.renderShell?.()||'<div class="panel panel-inner">Teamverwaltung nicht verfügbar. Bitte Seite aktualisieren.</div>');
     const audits=state.resetAudit||[];
-    return pageHead('Administration','Einstellungen','Einzelne Interviews kontrolliert zurücksetzen. Alle anderen Interviews und die Personenliste bleiben erhalten.',`<span class="pill">${state.interviews.length} Interviewdatensätze</span>`)+
+    return pageHead('Administration','Einstellungen','Einzelne Interviews kontrolliert zurücksetzen. Alle anderen Interviews und die Personenliste bleiben erhalten.',`<span class="pill">${state.interviews.length} Interviewdatensätze</span>`)+settingsTabs()+
       `<div class="panel"><div class="panel-inner"><div class="panel-head"><div><h2>Interviews zurücksetzen</h2><small>Admin-Funktion · mit Bestätigung und Änderungsprotokoll</small></div><span class="pill red">Unwiderruflicher Vorgang</span></div><div class="notice-box warn" style="margin-bottom:18px">${icon('alert')}<span>Ein Reset löscht die Antworten, die ausgehenden Netzwerkbeziehungen, die Interview-Ortsangaben und die Bearbeitungsdetails <strong>nur dieser Person</strong>. Die Person, ihre Stammdaten und alle Interviews anderer Personen bleiben erhalten. Exportiere bei Bedarf vorher eine Sicherung.</span></div><div class="toolbar" style="padding:0 0 14px"><div class="search-wrap">${icon('search')}<input id="settings-search" class="search-input" placeholder="Person / P-ID suchen …" value="${esc(state.settingsSearch)}" aria-label="Person für Interviewreset suchen"></div><span class="pill">${state.people.length} Personen</span></div><div id="settings-people-list">${renderSettingsRows()}</div></div></div>
       <div class="panel" style="margin-top:20px"><div class="panel-inner"><div class="panel-head"><h2>Letzte Zurücksetzungen</h2><small>Serverseitiges Änderungsprotokoll</small></div>${audits.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Datum</th><th>Personen-ID</th><th>Vorheriger Status</th><th>Entfernt</th></tr></thead><tbody>${audits.map(a=>`<tr><td>${fmtTime(a.reset_at)}</td><td>${esc(a.person_code)}</td><td>${esc(a.previous_status)}</td><td>${Number(a.answers_deleted)||0} Antworten · ${Number(a.edges_deleted)||0} Kanten · ${Number(a.locations_deleted)||0} Orte</td></tr>`).join('')}</tbody></table></div>`:empty('Noch keine Zurücksetzungen','Hier erscheint das Protokoll nach dem ersten Reset.','clipboard')}</div></div>`;
   }
@@ -751,7 +759,7 @@
     clearTimeout(autosaveTimer);
     state.route=route;state.form=null;state.draftDirty=false;state.query='';state.filter='all';state.step=0;
     render();window.scrollTo(0,0);
-    if(route==='settings'&&state.member?.role==='admin')loadResetAudit().catch(e=>toast(e.message,'error'));
+    if(route==='settings'&&state.member?.role==='admin'&&state.settingsTab!=='team')loadResetAudit().catch(e=>toast(e.message,'error'));
   }
   async function addPerson(form){
     if(state.busy)return;
@@ -944,6 +952,7 @@
     if(a==='open-nav'){qs('#shell')?.classList.add('nav-open');return;}
     if(a==='close-nav'){qs('#shell')?.classList.remove('nav-open');return;}
     if(a==='refresh'){try{await reloadData();toast('Daten aktualisiert.','success');}catch(err){toast(err.message,'error');}return;}
+    if(a==='settings-tab'){state.settingsTab=btn.dataset.tab==='team'?'team':'interviews';render();if(state.settingsTab==='interviews')loadResetAudit().catch(e=>toast(e.message,'error'));return;}
     if(a==='ask-interview-reset'){openResetConfirmation(btn.dataset.person);return;}
     if(a==='confirm-interview-reset'){await performInterviewReset();return;}
     if(a==='network-layer'){state.networkLayer=btn.dataset.layer==='geographic'?'geographic':'social';if(state.route==='network')render();return;}

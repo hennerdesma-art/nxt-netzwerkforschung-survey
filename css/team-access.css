@@ -1,0 +1,29 @@
+/* NXT | Team & Zugänge (admin-only settings). */
+.nxt-settings-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 20px;padding:6px;border:1px solid #dce9e9;border-radius:15px;background:#eef6f6;width:max-content;max-width:100%}
+.nxt-settings-tabs .nxt-settings-tab{border:0;border-radius:11px;padding:11px 16px;background:transparent;font-size:12px;font-weight:800;cursor:pointer;color:#52767d;transition:background .2s,color .2s,box-shadow .2s}
+.nxt-settings-tabs .nxt-settings-tab[aria-selected="true"]{background:#fff;color:#007f86;box-shadow:0 4px 14px #143f4a15}
+.nxt-settings-tabs .nxt-settings-tab:focus-visible{outline:2px solid #008b92;outline-offset:2px}
+.nxt-team{display:grid;gap:20px}
+.nxt-team-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.45fr);gap:18px;align-items:start}
+.nxt-team-grid .panel{min-width:0}
+.nxt-team-invite-form{display:grid;gap:15px}
+.nxt-team-invite-form button[type="submit"]{justify-content:center;width:max-content;max-width:100%;margin-top:3px}
+.nxt-team-hint{font-size:12px;line-height:1.65;color:#678088;margin:15px 0 0}
+.nxt-team-invite-result{margin-top:17px;border:1px solid #bee4df;background:#eef9f6;padding:16px;border-radius:13px;color:#13565d}
+.nxt-team-invite-result>strong{display:block;font-size:13px;margin-bottom:5px}
+.nxt-team-invite-result>p{font-size:12px;line-height:1.55;margin:0 0 12px}
+.nxt-team-invite-result>small{display:block;color:#547a7d;line-height:1.6;margin-top:9px}
+.nxt-team-link-row{display:flex;gap:8px;align-items:center}
+.nxt-team-link-row input{flex:1;min-width:0;background:white;border:1px solid #cce5e4;border-radius:9px;padding:11px 12px;color:#37656b;font-size:11px}
+.nxt-team-link-row .btn{white-space:nowrap}
+.nxt-team-user{display:flex;flex-direction:column;gap:4px;min-width:0}
+.nxt-team-user strong{font-size:12px;white-space:normal}
+.nxt-team-user small{font-size:11px;color:#778b91;overflow-wrap:anywhere;max-width:220px}
+.nxt-team-table{min-width:680px}
+.nxt-team-table td,.nxt-team-table th{padding:13px 12px}
+.nxt-team-role-select{background:#fff;border:1px solid #d9e5e8;border-radius:9px;padding:9px 10px;font-size:12px;color:#224955;max-width:150px}
+.nxt-team-role-select:disabled{opacity:.7;cursor:not-allowed}
+.nxt-team-state-note{display:block;color:#8e9b9c;font-size:10px;margin-top:5px;white-space:normal}
+.nxt-team-audit-panel{min-width:0}
+@media(max-width:1180px){.nxt-team-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.nxt-settings-tabs{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.nxt-settings-tabs .nxt-settings-tab{padding:11px 8px;font-size:11px}.nxt-team-link-row{flex-direction:column;align-items:stretch}.nxt-team-invite-form button[type="submit"]{width:100%}}

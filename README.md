@@ -197,3 +197,19 @@ Unter **Netzwerk** kann zwischen **Soziale Ebene** und **Geografische Ebene** ge
 Die künstlerische 2,5D-Grafik hat **keinen gültigen Metermaßstab**. Die fünf Gebäudehöhen sind vorläufig mit ca. zwei oberirdischen Geschossen bzw. 7 m angenommen. Der Originalplan ist über den Karten-Button abrufbar. Positionen der im Fragebogen markierten sozialen Orte und Anreisepunkte sind auf dem 2,5D-Bild näherungsweise übertragen. Methodik, Kontrollpunkte und ausstehende Validierung: [`CAMPUS_KOORDINATEN.md`](CAMPUS_KOORDINATEN.md).
 
 **Datenquellen:** `persons` (Hauptgebäude, Raum, Rolle), `interviews` (Status), `edges` (gerichtete fachliche Nennungen) und nach Anmeldung `answers` (C2/C7/C8). Es gibt **keine** Änderung des Supabase-Schemas, der bestehenden Fragebögen oder ihrer Antworten. Das Browsermodul wird erst nach erfolgreicher Team-Anmeldung mit Forschungsdaten befüllt. Test: `python tests/campus_smoke.py` (nur synthetische Daten).
+
+## Team & Zugänge: persönliche Konten
+
+Unter **Einstellungen → Team & Zugänge** können aktive Administratoren eigenständige Logins anlegen. Für ein neues Mitglied werden **Name**, **E-Mail** und **Rolle** (Interviewer/Administrator) angegeben. Standardmäßig ist **Interviewer** eingestellt. Der Server erstellt über Supabase Auth einen einmaligen Einladungstoken und trägt das Konto in `survey_members` ein. Der **Einladungslink** wird nur dem angemeldeten Administrator in der Website angezeigt und muss sicher (z. B. über Microsoft Teams) an genau die eingeladene Person weitergegeben werden. Es ist **kein gemeinsames Team-Passwort** erforderlich.
+
+Die eingeladene Person öffnet den Link, die Browser-App überprüft den Auth-Token mit `verifyOtp({ type: 'invite' })` und fordert ein **eigenes Passwort von mindestens 12 Zeichen** an. Danach erfolgt jede Anmeldung mit eigener E-Mail + Passwort. Der Link nutzt ein URL-Fragment (`#nxt_invite=...`), nicht einen URL-Queryparameter; damit überträgt GitHub Pages den Einmal-Token nicht in HTTP-Zugriffspfaden. In der Oberfläche kann ein Administrator die Teamliste einsehen, Rollen ändern, Zugänge deaktivieren und die Verwaltungsaktionen nachverfolgen. Das eigene Administrator-Konto kann nicht über diese Ansicht herabgestuft oder deaktiviert werden.
+
+**Serverseitige Sicherheit:** Die Edge Function `team-access` validiert den individuellen Supabase-Access-Token über GoTrue und prüft die aktive Administratorrolle in `survey_members`. Erst dann wird die privilegierte Auth Admin API verwendet. Geheim-/Service-Schlüssel sind ausschließlich in der Edge Function-Umgebung verfügbar und werden **niemals** an GitHub Pages ausgeliefert. Das Audit ist per RLS ausschließlich für aktive Administratoren lesbar. `verify_jwt=false` beim Deployment ist beabsichtigt, da die JWT-Prüfung **im Handler selbst** stattfindet (auch für aktuelle Publishable Keys).
+
+**Supabase-Projekt `trqhbzzwpamcyxzxaxmk`:** Die Funktion `supabase/functions/team-access/index.ts` und das Schema `sql/007_team_access_audit.sql` wurden bereitgestellt. Zum erneuten Deployment den Code in der Supabase-Edge-Function `team-access` verwenden und die Runtime-Umgebungsvariablen `SUPABASE_URL`, `SUPABASE_SECRET_KEYS` sowie `SUPABASE_PUBLISHABLE_KEYS` verfügbar halten (werden von Supabase gehostet automatisch bereitgestellt). Für die Link-Variante wird **kein SMTP-Server** benötigt. Wer spätere Auth-Einladungen **automatisch per E-Mail versenden** möchte, muss bei Supabase eigenes SMTP bzw. einen Send-Email-Hook konfigurieren.
+
+Die derzeitigen vorhandenen Benutzer, Interviews, Netzwerkbeziehungen und Standorte wurden bei der Umstellung **nicht verändert**.
+
+Tests mit synthetischen Daten:
+- `node tests/team_access_edge_smoke.cjs`
+- `python tests/team_access_frontend_smoke.py`
