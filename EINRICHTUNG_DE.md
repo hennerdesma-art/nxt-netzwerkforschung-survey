@@ -80,3 +80,12 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 6. Rollenänderungen und Deaktivierungen sind ausschließlich Administratoren erlaubt und werden protokolliert. Das eigene aktive Administratorkonto lässt sich hier nicht deaktivieren.
 
 **Technik:** Supabase Edge Function `team-access` (nur nach selbst verifizierter Benutzer-JWT und serverseitiger Administratorprüfung); Auth Admin API und geheime Schlüssel niemals im Browser. Die SQL-Migration `sql/007_team_access_audit.sql` wurde auf das NXT-Projekt angewandt. Das Kopieren des Einladungslinks funktioniert ohne SMTP. Die automatische Versendung von Auth-E-Mails an beliebige E-Mail-Adressen ist auf dem Supabase-Standardserver eingeschränkt; dafür wäre ein eigenes SMTP-Setup notwendig.
+
+## 5. Einen Teamzugang dauerhaft entfernen
+
+1. **Einstellungen → Team & Zugänge** öffnen.
+2. Beim betreffenden Teammitglied auf **Löschen** klicken.
+3. Im Bestätigungsdialog die komplette E-Mail-Adresse eintippen und **Benutzerkonto endgültig löschen** wählen.
+4. Die E-Mail erscheint nicht mehr in der Teamliste und kann über **Neues Gruppenmitglied einladen** wieder eingeladen werden. Das neue Konto erhält einen neuen Auth-Benutzer und ein neues persönliches Passwort.
+
+Das eigene Konto, der letzte aktive Administrator und die Forschungspersonen/Interviews sind geschützt. Ein Protokolleintrag zur administrativen Löschung bleibt erhalten. Das Konto wird tatsächlich aus Supabase Auth gelöscht, nicht nur auf `active=false` gesetzt.

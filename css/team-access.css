@@ -27,3 +27,22 @@
 .nxt-team-audit-panel{min-width:0}
 @media(max-width:1180px){.nxt-team-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.nxt-settings-tabs{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.nxt-settings-tabs .nxt-settings-tab{padding:11px 8px;font-size:11px}.nxt-team-link-row{flex-direction:column;align-items:stretch}.nxt-team-invite-form button[type="submit"]{width:100%}}
+/* Team account removal: requires an explicit typed-email confirmation. */
+.nxt-team-row-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.nxt-team-delete-button{border:1px solid #e6c3c5;background:#fff8f8;color:#a23c40}
+.nxt-team-delete-button:hover:not(:disabled){background:#fff0f0;border-color:#d9a1a4}
+.nxt-team-delete-button:disabled{opacity:.45;cursor:not-allowed}
+.nxt-team-delete-backdrop{position:fixed;inset:0;background:rgba(13,36,44,.57);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
+.nxt-team-delete-dialog{background:#fff;border:1px solid #e8edef;border-radius:20px;box-shadow:0 22px 85px rgba(0,28,39,.22);max-width:520px;width:100%;padding:26px;color:#243e46}
+.nxt-team-delete-dialog h2{font-size:19px;margin:0 0 12px}
+.nxt-team-delete-dialog p{font-size:13px;line-height:1.65;margin:0 0 15px}
+.nxt-team-delete-safe{background:#eaf6f4;color:#215e60;border-radius:11px;padding:11px 13px}
+.nxt-team-delete-dialog .field{margin:14px 0}
+.nxt-team-delete-dialog .field label{line-height:1.45}
+.nxt-team-delete-dialog .field input{width:100%;box-sizing:border-box}
+.nxt-team-delete-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:19px}
+.nxt-team-delete-confirm{background:#b83f45;color:#fff;border:1px solid #b83f45}
+.nxt-team-delete-confirm:hover:not(:disabled){background:#992d35;color:#fff}
+.nxt-team-delete-confirm:disabled{opacity:.6;cursor:wait}
+.nxt-team-delete-success{padding:12px 14px;background:#ebf8f3;border:1px solid #c1e6d9;border-radius:11px;color:#146554;font-size:12px;line-height:1.55;margin-bottom:12px}
+@media(max-width:640px){.nxt-team-delete-dialog{padding:19px}.nxt-team-delete-actions{flex-direction:column-reverse}.nxt-team-delete-actions .btn{width:100%;justify-content:center}}

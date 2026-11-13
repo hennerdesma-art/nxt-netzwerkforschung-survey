@@ -179,6 +179,66 @@ Deno.serve(async req => {
         message: 'Zugang angelegt. Den einmaligen Einladungslink sicher an das Teammitglied senden. Der Link verfällt nach der Supabase-OTP-Frist (standardmäßig etwa eine Stunde).' });
     }
 
+
+    if (action === 'delete_user') {
+      // Only delete the NXT team account. Interview participants and survey data
+      // are separate records and must be preserved.
+      const targetId = tidy(body.user_id, 40);
+      const confirmEmail = tidy(body.confirm_email, 255).toLowerCase();
+      if (!isUuid(targetId)) return fail('Ungültige Benutzer-ID.');
+      if (targetId === actor.id)
+        return fail('Dein eigenes Administratorkonto kannst du nicht löschen.', 403, 'SELF_DELETE_BLOCKED');
+
+      const { data: target, error: lookupError } = await admin.from('survey_members')
+        .select('user_id,display_name,active,role').eq('user_id', targetId).maybeSingle();
+      if (lookupError) throw lookupError;
+      if (!target) return fail('Teamzugang nicht gefunden.', 404, 'NOT_FOUND');
+
+      const user = (await allUsers(admin)).find(u => u.id === targetId);
+      if (!user?.email) return fail('Zu diesem Teamzugang wurde kein Auth-Benutzer gefunden.', 409, 'AUTH_NOT_FOUND');
+      const actualEmail = user.email.trim().toLowerCase();
+      if (confirmEmail !== actualEmail)
+        return fail('Zur Bestätigung muss die E-Mail-Adresse genau übereinstimmen.', 400, 'EMAIL_MISMATCH');
+
+      if (target.active && target.role === 'admin') {
+        const { count, error } = await admin.from('survey_members').select('user_id', { count:'exact', head:true })
+          .eq('active', true).eq('role', 'admin');
+        if (error) throw error;
+        if ((count || 0) <= 1)
+          return fail('Der letzte aktive Administrator darf nicht gelöscht werden.', 409, 'LAST_ADMIN');
+      }
+
+      // Hard delete (softDelete=false) removes the Auth identity and the
+      // survey_members row via ON DELETE CASCADE. The same email can be invited again.
+      // The research persons, interviews, answers and network edges remain untouched.
+      const { error: deleteError } = await admin.auth.admin.deleteUser(targetId, false);
+      if (deleteError) {
+        console.error('team-access delete_user:', deleteError.message);
+        return fail('Löschen fehlgeschlagen. Prüfe, ob dem Konto noch Supabase-Storage-Objekte zugeordnet sind.', 409, 'DELETE_FAILED');
+      }
+
+      // Write audit only after confirmed deletion. The deleted auth.users id
+      // cannot be used as a target foreign key; retain only the restricted
+      // admin-only audit record with the email and previous role.
+      let auditWarning = false;
+      try {
+        await logAction(admin, actor.id, null, actualEmail, 'delete_user', {
+          previous_role: target.role,
+          previous_active: target.active,
+          account_type: 'team_login',
+        });
+      } catch (auditError) {
+        auditWarning = true;
+        console.error('team-access deletion audit:', auditError instanceof Error ? auditError.message : 'Unknown error');
+      }
+      return response({
+        status: 'deleted',
+        email: actualEmail,
+        message: 'Benutzerkonto endgültig gelöscht. Die E-Mail-Adresse kann jetzt erneut eingeladen werden.',
+        audit_warning: auditWarning,
+      });
+    }
+
     if (action === 'set_active' || action === 'set_role') {
       const targetId = tidy(body.user_id, 40);
       if (!isUuid(targetId)) return fail('Ungültige Benutzer-ID.');

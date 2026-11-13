@@ -213,3 +213,7 @@ Die derzeitigen vorhandenen Benutzer, Interviews, Netzwerkbeziehungen und Stando
 Tests mit synthetischen Daten:
 - `node tests/team_access_edge_smoke.cjs`
 - `python tests/team_access_frontend_smoke.py`
+
+### Teamzugang endgültig löschen und erneut einladen
+
+Administratoren finden unter **Einstellungen → Team & Zugänge** neben jedem fremden Teamkonto die Aktion **Löschen**. Nach Eingabe der vollständigen E-Mail zur Bestätigung ruft die Oberfläche die serverseitige Edge-Function-Aktion `delete_user` auf. Diese prüft den Admin-JWT, die aktive Administratorrolle, die Zielperson, die unveränderliche Benutzer-ID, den vollständigen E-Mail-Abgleich sowie den Schutz vor Selbstlöschung und Löschen des letzten aktiven Administrators. Sie ruft `auth.admin.deleteUser(userId, false)` (Hard Delete) auf. Die per Fremdschlüssel verknüpfte `survey_members`-Zuordnung wird automatisch mitgelöscht, anschließend ist **dieselbe E-Mail erneut einladbar**. Vorhandene Interviewdaten, Netzwerkbeziehungen und die 39 Forschungspersonen sind davon unabhängig und bleiben bestehen. Bestehende Zugriffs-JWTs können bis zum Ablauf gültig sein, haben nach dem Entfernen der Mitgliedschaft aber keine Datenberechtigung mehr. Ein Admin-only-Audit speichert den Vorgang mit der E-Mail (keine Wiederherstellung des gelöschten Auth-Kontos). Die Migration `sql/008_team_account_hard_delete.sql` erweitert nur die möglichen Audit-Aktionen; es werden durch die Migration **keine Konten gelöscht**.
