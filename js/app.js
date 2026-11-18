@@ -1024,8 +1024,20 @@
       if(String(v)==='anderer Ort')return 99;
       const n=parseInt(String(v),10);return n>=10&&n<=16?n:'';
     }
-    if(key==='A6_vor_NXT'||key.startsWith('C2_')&&!key.endsWith('_Etage')||
-       key.startsWith('C7_')&&!key.endsWith('_Text'))return excelBinary(v);
+    if(key.startsWith('C2_')&&key.endsWith('_Standorte')){
+      const base=key.slice(0,-'_Standorte'.length);
+      if(!c2IsChecked(answers[base]))return '';
+      const rows=Array.isArray(v)&&v.length?v:[{
+        building:answers.C1_Gebaeude||'',floor:answers[base+'_Etage']||''
+      }];
+      return rows.map(row=>[String(row.building||'').trim(),String(row.floor||'').trim()]
+        .filter(Boolean).join(' / ')).filter(Boolean).join(' | ');
+    }
+    if(key.startsWith('C2_')&&!key.endsWith('_Etage')){
+      if(v===undefined)return status==='completed'?0:'';
+      return excelBinary(v);
+    }
+    if(key==='A6_vor_NXT'||key.startsWith('C7_')&&!key.endsWith('_Text'))return excelBinary(v);
     if(key.startsWith('C3_')||key.startsWith('C4_')||key.startsWith('C8_')&&key!=='C8_Anzahl'&&!key.endsWith('_Text')){
       if(v===undefined)return status==='completed'?0:'';
       return excelBinary(v);
@@ -1105,6 +1117,27 @@
       makeSheet(wb,'Persons',['ID','Code','Name','Mitarbeitergruppe','Berufsbezeichnung','Bereich','Gebaeude','Raum','Anmerkungen'],personRows);
       makeSheet(wb,'Interviews',['InterviewID','PersonenID','Person','Status','Interviewer','Beginn','Abschluss','DauerMinuten','LetzteAktualisierung','Version','Notizen'],interviewRows);
       makeSheet(wb,'Answers',['InterviewID','PersonCode','Frage','Antwort','LetzteAktualisierung'],answerRows);
+
+      // Analytically useful normalized C2 locations – one row per selected room location.
+      // The original yes/no columns and first-floor legacy field remain unchanged.
+      const c2Rows=people.flatMap(person=>{
+        const interview=interviews.find(x=>x.person_id===person.id);
+        const an=interview?answerByInterview.get(interview.id)||{}:{};
+        if(!interview)return [];
+        return (Q.spacesC2||[]).flatMap(([key,label])=>{
+          const base=c2Base(key);
+          if(!c2IsChecked(an[base]))return [];
+          const stored=an[base+'_Standorte'];
+          const sites=Array.isArray(stored)&&stored.length?stored:[{
+            building:an.C1_Gebaeude||person.building||'',floor:an[base+'_Etage']||''
+          }];
+          return sites.map((loc,i)=>({
+            PersonCode:person.code,Raumart:label,Standort:i+1,
+            Gebaeude:String(loc.building||''),EtageFlur:String(loc.floor||'')
+          }));
+        });
+      });
+      makeSheet(wb,'C2_Standorte',['PersonCode','Raumart','Standort','Gebaeude','EtageFlur'],c2Rows);
       makeSheet(wb,'Edges',['Source','Target','B2_Inhalt','B2_F','B2_L','B2_SV','B3_Haeufigkeit','B4_Zustandekommen','B5_Medium','B6_vor_NXT_bekannt','SourceName','TargetName','Frequency','Topics','ExchangeMode','Note','InterviewID','Directed'],edgeRows);
       makeSheet(wb,'Locations',['PersonCode','Person','Gebaeude','Ort','Frequenz','Anmerkungen'],locationRows);
       makeSheet(wb,'Nodes',['Id','Label','Group','Unit','Building','Room'],nodeRows);
