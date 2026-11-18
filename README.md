@@ -8,6 +8,7 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 
 - NXT-themed login and responsive dashboard (desktop / iPad / mobile)
 - Person directory, manual creation, Excel/CSV import
+- Interview overview with instant case-insensitive name and person-ID search (local filter, no extra database requests)
 - Interview steps A (person group), B (directed professional edges), C (locations), D (review)
 - Central Postgres database with Supabase Auth and strict RLS membership checks
 - Atomic interview save and optimistic-lock version to prevent concurrent overwriting
