@@ -10,12 +10,13 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 - Person directory, manual creation, Excel/CSV import
 - Interview overview with instant case-insensitive name and person-ID search (local filter, no extra database requests)
 - Interview steps A (person group), B (directed professional edges), C (locations), D (review)
+- C2 rooms: checked = used; unselected = no; repeatable building/floor entries with office-building default and individual override
 - Central Postgres database with Supabase Auth and strict RLS membership checks
 - Atomic interview save and optimistic-lock version to prevent concurrent overwriting
 - Cross-device status sync with realtime listener (if publication enabled) and 30s polling
 - Automatic draft save after 12 seconds without edits, plus manual save and completion
 - Interview start/completion timestamps and duration in minutes for pilot timing checks
-- Seven-sheet Excel export: Persons, Interviews, Answers, Edges, Locations, Nodes, Datenqualitaet
+- Excel export with additional normalized `C2_Standorte` sheet for all room/building/floor combinations (legacy C2 columns preserved)
 - Gephi-compatible Node/Edge sheet headers (Id, Label, Source, Target)
 
 The interview instrument now matches **Fragebogen_Netzwerkforschung_NXT_final.pdf**
@@ -27,6 +28,18 @@ Historical V7 answers are retained under their original keys (e.g. old C9_1…C9
 new PDF answers use C9…C13 and B7_Wichtigkeit to avoid mixing unlike measures.
 The five new people P40–P44 are stored in protected Supabase only;
 **no real participant list is committed to this public repository**.
+
+### C2 room-usage entries
+
+The five C2 room categories use a checkbox (selected = yes, unselected = no). A room type
+can have multiple locations using `+ Standort hinzufügen`. Each location records its
+building (defaulting to the office building selected in C1, or the existing profile until C1
+is answered) and an optional floor/corridor label (UG, EG, OG 1, OG 2, etc.).
+Rows are kept in JSONB `C2_<category>_Standorte` in the existing `answers` table.
+Older `C2_<category> = "ja"/"nein"` and `C2_<category>_Etage` are read without
+losing their values, and the first floor is kept in the legacy field for compatibility.
+The Excel codebook contains the new C2 fields, while the extra `C2_Standorte` worksheet
+has one row per location. No Supabase schema or existing RLS rules were modified.
 
 ## Setup 1: dedicated Supabase project
 
