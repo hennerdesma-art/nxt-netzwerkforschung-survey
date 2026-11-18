@@ -30,6 +30,8 @@ new PDF answers use C9…C13 and B7_Wichtigkeit to avoid mixing unlike measures.
 The five new people P40–P44 are stored in protected Supabase only;
 **no real participant list is committed to this public repository**.
 
+**C12 and C13 (18 November 2026):** Both dropdowns now use `Sehr wenig / Wenig / Neutral / Viel / Sehr viel` (coded 1–5). Existing Supabase responses retain their original labels; the interface and coded Excel export map them by their prior ordinal positions. No historic answers are rewritten.
+
 ### C2 room-usage entries
 
 The five C2 room categories use a checkbox (selected = yes, unselected = no). A room type
