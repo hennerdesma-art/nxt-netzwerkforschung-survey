@@ -387,6 +387,7 @@
         edges:results[1].data.map(e=>({target_person_id:e.target_person_id,frequency:e.frequency||'',topics:e.topics||[],exchange_mode:e.exchange_mode||'',exchange_medium:e.exchange_medium||'',known_before_nxt:e.known_before_nxt??null,note:e.note||''})),
         locations:Array.from({length:Math.max(6,results[2].data.length)},(_,i)=>{const l=results[2].data[i]||{};return {building:l.building||'',place:l.place||'',frequency:l.frequency||'',notes:l.notes||''};})};
       c2EnsureAnswers(state.form);
+      c7EnsureAnswers(state.form);
       state.peerQuery='';state.peerOnly=false;state.route='interview';state.step=0;state.draftDirty=false;render();window.scrollTo(0,0);
     }catch(e){toast('Interview konnte nicht geladen werden: '+(e.message||e),'error');}
     finally{state.busy=false;}
@@ -520,6 +521,17 @@
     }
   }
 
+
+  // C7 uses the same checkbox semantics as C2: unchecked is always "Nein".
+  // Convert historic dropdown strings ("ja"/"nein") without modifying stored data.
+  const c7KnownKey=key=>(Q.placesC7||[]).some(([code])=>code===key);
+  function c7EnsureAnswers(form){
+    if(!form?.answers)return;
+    for(const [key] of Q.placesC7||[]){
+      form.answers['C7_'+key]=c2IsChecked(form.answers['C7_'+key]);
+    }
+  }
+
   const qYesNo = [['ja','ja'],['nein','nein']];
   function formStepC(){
     const f=state.form,a=f.answers;
@@ -549,7 +561,19 @@
         '</section>';
     }).join('')+'</div>';
     const c6=`<div class="q-c6-list">${Array.from({length:6},(_,i)=>{const l=f.locations[i]||{};return `<div class="q-c6-row"><span class="q-row-num">Eintrag ${i+1}</span><div class="field"><label>Gebäude</label><select data-location-field="building" data-index="${i}">${option('','Bitte auswählen',l.building)}${Q.buildings.map(k=>option(k,k,l.building)).join('')}</select></div><div class="field"><label>Raum</label><input type="text" data-location-field="place" data-index="${i}" value="${esc(l.place||'')}" placeholder="Raum"></div></div>`;}).join('')}</div>`;
-    const c7=`<div class="q-places-list">${Q.placesC7.map(([k,label])=>`<div class="q-place-row"><div>${esc(label)}</div>${qChoice('C7_'+k,'ja / nein',qYesNo,a['C7_'+k])}${k.startsWith('Sonstige')?qText('C7_'+k+'_Text','Sonstiger Ort',a['C7_'+k+'_Text']):''}</div>`).join('')}</div>`;
+    const c7='<div class="q-c2-list q-c7-list">'+(Q.placesC7||[]).map(([key,label])=>{
+      const checked=c2IsChecked(a['C7_'+key]),other=key.startsWith('Sonstige');
+      const textKey='C7_'+key+'_Text';
+      return '<section class="q-c2-card q-c7-card"><div class="q-c2-header">'+
+        '<label class="q-c2-checkbox"><input type="checkbox" data-c7-toggle="'+esc(key)+'" '+
+        (checked?'checked':'')+'><span><strong>'+esc(label)+'</strong>'+
+        '<small>Häkchen = Ja · leer = Nein</small></span></label></div>'+
+        (other?'<div class="q-c7-other"><div class="field"><label for="q-'+esc(textKey)+'">Ort angeben</label>'+
+        '<input id="q-'+esc(textKey)+'" data-answer="'+esc(textKey)+'" type="text" '+
+        'value="'+esc(checked?a[textKey]||'':'')+'" placeholder="z. B. Gebäude und Treffpunkt" '+
+        (checked?'':'disabled aria-disabled="true"')+' maxlength="150"></div></div>':'')+
+        '</section>';
+    }).join('')+'</div>';
     const c8=`<div class="q-encounter-header"><span>${qCountC8()} / 3 ausgewählt</span><small>Maximal 3 Kreuze</small></div><div class="q-choice-grid">${Q.encountersC8.map(([key,label])=>qToggle('C8_'+key,label,Boolean(a['C8_'+key]))).join('')}</div>${qText('C8_Sonstige_Text','Sonstige Gebäude / Raum',a.C8_Sonstige_Text)}`;
     const cAssessments=['C9','C10','C11','C12','C13'].map(key=>qQuestion(key,Q.questionsC[key],qChoice(key,'Ihre Antwort',Q.scalesC[key],a[key]))).join('');
     const master=state.people.find(x=>x.id===f.personId);
@@ -768,6 +792,13 @@
     if(el.id==='peer-only'){
       state.peerOnly=el.checked;const list=qs('#peer-results');if(list)list.innerHTML=renderPeerResults();return;
     }
+    if(el.dataset.c7Toggle!==undefined){
+      if(e.type!=='change')return;
+      const key=el.dataset.c7Toggle;
+      if(!c7KnownKey(key))return;
+      state.form.answers['C7_'+key]=Boolean(el.checked);
+      markDirty();render();return;
+    }
     if(el.dataset.c2Toggle!==undefined){
       if(e.type!=='change')return;
       const key=el.dataset.c2Toggle;
@@ -875,6 +906,13 @@
           followOffice:loc.followOffice===true
         })):[];
         answers[base+'_Etage']=yes?(answers[base+'_Standorte'][0]?.floor||''):'';
+      }
+      // Unchecked C7 is "No" even if an older interview contained an empty dropdown.
+      // Other-location notes are submitted only for selected custom locations.
+      for(const [key] of Q.placesC7||[]){
+        const answerKey='C7_'+key,selected=c2IsChecked(answers[answerKey]);
+        answers[answerKey]=selected;
+        if(key.startsWith('Sonstige')&&!selected)answers[answerKey+'_Text']='';
       }
       // Remove accidental leading/trailing or repeated spaces in free-text answers.
       for(const key of Object.keys(answers)){
@@ -1037,7 +1075,12 @@
       if(v===undefined)return status==='completed'?0:'';
       return excelBinary(v);
     }
-    if(key==='A6_vor_NXT'||key.startsWith('C7_')&&!key.endsWith('_Text'))return excelBinary(v);
+    if(key.startsWith('C7_')&&key.endsWith('_Text')){
+      const parentKey=key.slice(0,-'_Text'.length);
+      return c2IsChecked(answers[parentKey])?v??'':'';
+    }
+    if(key.startsWith('C7_'))return v===undefined?(status==='completed'?0:''):excelBinary(v);
+    if(key==='A6_vor_NXT')return excelBinary(v);
     if(key.startsWith('C3_')||key.startsWith('C4_')||key.startsWith('C8_')&&key!=='C8_Anzahl'&&!key.endsWith('_Text')){
       if(v===undefined)return status==='completed'?0:'';
       return excelBinary(v);
