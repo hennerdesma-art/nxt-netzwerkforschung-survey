@@ -492,6 +492,7 @@
     <div class="review-row"><span>Datum</span><strong>${esc(a.Datum||'–')}</strong></div>
     <div class="review-row"><span>A1 · Gruppe</span><strong>${esc(a.A1_Gruppe||'übersprungen')}</strong></div>
     <div class="review-row"><span>A2 · Kategorie</span><strong>${esc(a.A2_Kategorie||'übersprungen')}</strong></div>
+    <div class="review-row"><span>B7 · Fachübergreifender Austausch</span><strong>${esc(a.B7_Wichtigkeit||'übersprungen')}</strong></div>
     <div class="review-row"><span>B1 · Fachlicher Austausch</span><strong>${f.edges.length} von ${Math.max(0,state.people.length-1)} Personen${a.no_exchange?' · explizit keine':''}</strong></div>
     <div class="review-row"><span>C1 · Büro</span><strong>${esc([a.C1_Gebaeude,a.C1_Raum].filter(Boolean).join(' · ')||'übersprungen')}</strong></div>
     <div class="review-row"><span>C8 · Gesprächsorte</span><strong>${qCountC8()} / max. 3</strong></div>
@@ -871,8 +872,9 @@
     if(key==='Einwilligung')return consentYes(v)?1:consentNo(v)?0:'';
     const maps={
       A1_Gruppe:Q.groups,A2_Kategorie:Q.categories,A4_Alter:Q.ages,
-      A5_Geschlecht:Q.genders,B_Aussage_Austausch_wichtig:Q.likert,
-      C9_1:Q.likert,C9_2:Q.likert,C9_3:Q.likert,C9_4:Q.likert,C9_5:Q.likert
+      A5_Geschlecht:Q.genders,B7_Wichtigkeit:Q.b7Scale,
+      C9:Q.scalesC.C9,C10:Q.scalesC.C10,C11:Q.scalesC.C11,
+      C12:Q.scalesC.C12,C13:Q.scalesC.C13
     };
     if(maps[key])return excelLookup(v,maps[key]);
     if(key==='C5_Ankunft'){
@@ -918,11 +920,14 @@
       const usable=i?.status==='completed' && (edges.some(e=>e.source_person_id===ego.id)||a.no_exchange===true);
       for(const alter of sortedPeople){
         const own=ego.id===alter.id;const e=!own?edgeByPair.get(ego.id+'|'+alter.id):null;
-        const arr=e?.topics||[];const topic=arr[0];
+        const topics=e?normalizeB2Topics(e.topics):[];
         pairs.push({
           Ego_ID:ego.code,Alter_ID:alter.code,Eigene_Person:own?1:0,
           B1_Austausch:own?'':usable?(e?1:0):'',
-          B2_Inhalt:e?excelLookup(topic,Q.b2):'',
+          B2_Inhalt:e?topics.join('+'):'',
+          B2_F:e?(topics.includes('F')?1:0):'',
+          B2_L:e?(topics.includes('L')?1:0):'',
+          B2_SV:e?(topics.includes('SV')?1:0):'',
           B3_Haeufigkeit:e?excelLookup(e.frequency,Q.b3):'',
           B4_Zustandekommen:e?excelLookup(e.exchange_mode,Q.b4):'',
           B5_Medium:e?excelLookup(e.exchange_medium,Q.b5):'',
@@ -946,7 +951,7 @@
       const personRows=people.map(p=>({ID:p.id,Code:p.code,Name:p.full_name,Mitarbeitergruppe:p.role_group,Berufsbezeichnung:p.professional_title,Bereich:p.unit,Gebaeude:p.building,Raum:p.room,Anmerkungen:p.notes}));
       const interviewRows=interviews.map(i=>({InterviewID:i.id,PersonenID:i.person_id,Person:byId.get(i.person_id)?.full_name,Status:i.status,Interviewer:i.interviewer_name,Beginn:i.started_at,Abschluss:i.completed_at,DauerMinuten:i.started_at&&i.completed_at?Math.round((new Date(i.completed_at)-new Date(i.started_at))/60000*10)/10:'',LetzteAktualisierung:i.updated_at,Version:i.version,Notizen:i.notes}));
       const answerRows=answers.map(a=>({InterviewID:a.interview_id,PersonCode:byId.get(interviewById.get(a.interview_id)?.person_id)?.code||'',Frage:a.question_key,Antwort:JSON.stringify(a.answer),LetzteAktualisierung:a.updated_at}));
-      const edgeRows=edges.map(e=>({B2_Inhalt:(e.topics||[])[0]||'',B3_Haeufigkeit:e.frequency,B4_Zustandekommen:e.exchange_mode,B5_Medium:e.exchange_medium,B6_vor_NXT_bekannt:e.known_before_nxt,Source:byId.get(e.source_person_id)?.code||e.source_person_id,Target:byId.get(e.target_person_id)?.code||e.target_person_id,SourceName:byId.get(e.source_person_id)?.full_name,TargetName:byId.get(e.target_person_id)?.full_name,Frequency:e.frequency,Topics:(e.topics||[]).join(' | '),ExchangeMode:e.exchange_mode,Note:e.note,InterviewID:e.interview_id,Directed:true}));
+      const edgeRows=edges.map(e=>({B2_Inhalt:b2ComboValue(e.topics),B2_F:Number(normalizeB2Topics(e.topics).includes('F')),B2_L:Number(normalizeB2Topics(e.topics).includes('L')),B2_SV:Number(normalizeB2Topics(e.topics).includes('SV')),B3_Haeufigkeit:e.frequency,B4_Zustandekommen:e.exchange_mode,B5_Medium:e.exchange_medium,B6_vor_NXT_bekannt:e.known_before_nxt,Source:byId.get(e.source_person_id)?.code||e.source_person_id,Target:byId.get(e.target_person_id)?.code||e.target_person_id,SourceName:byId.get(e.source_person_id)?.full_name,TargetName:byId.get(e.target_person_id)?.full_name,Frequency:e.frequency,Topics:normalizeB2Topics(e.topics).join(' | '),ExchangeMode:e.exchange_mode,Note:e.note,InterviewID:e.interview_id,Directed:true}));
       const locationRows=locations.map(l=>({PersonCode:byId.get(l.person_id)?.code||'',Person:byId.get(l.person_id)?.full_name,Gebaeude:l.building,Ort:l.place,Frequenz:l.frequency,Anmerkungen:l.notes}));
       const nodeRows=people.map(p=>({Id:p.code,Label:p.full_name,Group:p.role_group,Unit:p.unit,Building:p.building,Room:p.room}));
       const dqRows=people.map(p=>{
@@ -959,11 +964,11 @@
       makeSheet(wb,'Persons',['ID','Code','Name','Mitarbeitergruppe','Berufsbezeichnung','Bereich','Gebaeude','Raum','Anmerkungen'],personRows);
       makeSheet(wb,'Interviews',['InterviewID','PersonenID','Person','Status','Interviewer','Beginn','Abschluss','DauerMinuten','LetzteAktualisierung','Version','Notizen'],interviewRows);
       makeSheet(wb,'Answers',['InterviewID','PersonCode','Frage','Antwort','LetzteAktualisierung'],answerRows);
-      makeSheet(wb,'Edges',['Source','Target','B2_Inhalt','B3_Haeufigkeit','B4_Zustandekommen','B5_Medium','B6_vor_NXT_bekannt','SourceName','TargetName','Frequency','Topics','ExchangeMode','Note','InterviewID','Directed'],edgeRows);
+      makeSheet(wb,'Edges',['Source','Target','B2_Inhalt','B2_F','B2_L','B2_SV','B3_Haeufigkeit','B4_Zustandekommen','B5_Medium','B6_vor_NXT_bekannt','SourceName','TargetName','Frequency','Topics','ExchangeMode','Note','InterviewID','Directed'],edgeRows);
       makeSheet(wb,'Locations',['PersonCode','Person','Gebaeude','Ort','Frequenz','Anmerkungen'],locationRows);
       makeSheet(wb,'Nodes',['Id','Label','Group','Unit','Building','Room'],nodeRows);
       makeSheet(wb,'Datenqualitaet',['PersonCode','Name','Interviewstatus','FehltMitarbeitergruppe','FehltGebaeude','FehltRaum','FehltInterviewer','KantenAnzahl','KeinAustauschBestatigt','FachlicherAustauschUngeklaert'],dqRows);
-      const date=new Date().toISOString().slice(0,10);window.XLSX.writeFile(wb,`NXT_Netzwerkforschung_V7_${date}.xlsx`,{compression:true});
+      const date=new Date().toISOString().slice(0,10);window.XLSX.writeFile(wb,`NXT_Netzwerkforschung_PDF_final_${date}.xlsx`,{compression:true});
       toast('Excel-Export wurde erstellt. Bitte ausschlie\u00dflich gesch\u00fctzt ablegen.','success');
     }catch(e){toast('Excel-Export fehlgeschlagen: '+(e.message||e),'error');}
     finally{state.busy=false;}
