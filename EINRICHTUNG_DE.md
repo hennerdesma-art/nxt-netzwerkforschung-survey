@@ -89,3 +89,12 @@ mit Supabase von mehreren angemeldeten Geräten gleichzeitig genutzt werden.
 4. Die E-Mail erscheint nicht mehr in der Teamliste und kann über **Neues Gruppenmitglied einladen** wieder eingeladen werden. Das neue Konto erhält einen neuen Auth-Benutzer und ein neues persönliches Passwort.
 
 Das eigene Konto, der letzte aktive Administrator und die Forschungspersonen/Interviews sind geschützt. Ein Protokolleintrag zur administrativen Löschung bleibt erhalten. Das Konto wird tatsächlich aus Supabase Auth gelöscht, nicht nur auf `active=false` gesetzt.
+
+## Forschungsperson vollständig entfernen
+
+1. Als Administrator auf **Einstellungen → Interviews zurücksetzen** gehen und die Person suchen.
+2. **Person vollständig löschen** auswählen; die Vorschau zeigt eigene Interviews, Antworten, ein- und ausgehende Kanten, fremde Erwähnungen und Reset-Protokolle.
+3. Zur Bestätigung die **Personen-ID und den vollständigen Namen** eingeben und die Checkbox aktivieren.
+4. Erst dann **Person endgültig löschen** auswählen. Die serverseitige Löschung ist atomar, wird ohne Personennamen im speziellen Löschprotokoll gezählt und lässt die Interviews anderer Personen bestehen.
+
+Vorherige Exporte und Backups sind nicht Teil der automatischen Löschung. Die Funktion ist nicht die Teamzugangslöschung.
