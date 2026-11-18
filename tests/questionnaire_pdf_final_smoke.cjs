@@ -121,4 +121,33 @@ assert.equal(c2World.form.answers.C2_Meeting_Standorte[0].building,"5",
 assert.equal(c2World.form.answers.C2_Meeting_Standorte[1].building,"D (Alice-Salomon-Haus)",
  'Only office-inherited entries should follow C1');
 
+
+// C7: exactly the same checkbox semantics as C2, with two persistent custom-place inputs.
+assert.equal(Q.placesC7.length,6,'C7 still contains the six original location types');
+const c7Entries=Array.from(Q.placesC7.map(([key])=>key));
+assert.deepEqual(c7Entries,['Mensa','Lernzentrum','RZ','Aula','Sonstige','Sonstige2']);
+assert.ok(app.includes('data-c7-toggle='),'Every C7 location offers a checkbox');
+assert.ok(app.includes('q-c2-checkbox'),'C7 reuses the existing NXT/C2 checkbox styling');
+assert.ok(app.includes('const c7='),'C7 has its own reusable list layout');
+assert.ok(!app.includes("qChoice('C7_'+k,'ja / nein'"),'C7 dropdowns have been removed');
+assert.ok(app.includes("key.startsWith('Sonstige')"),'Both other-place fields remain');
+assert.ok(app.includes("disabled aria-disabled="),'Other-place inputs are disabled while unchecked');
+assert.ok(app.includes("state.form.answers['C7_'+key]=Boolean(el.checked)"),'Checked means true, unchecked means false');
+assert.ok(app.includes("c7EnsureAnswers(state.form)"),'Legacy strings are converted when the interview opens');
+assert.ok(app.includes("if(key.startsWith('Sonstige')&&!selected)answers[answerKey+'_Text']='';"),'Unchecked other places do not persist stale notes');
+assert.ok(app.includes("return v===undefined?(status==='completed'?0:''):excelBinary(v)"),'Export counts untouched C7 boxes as no');
+const c7Start=app.indexOf('const c7KnownKey='),c7End=app.indexOf('const qYesNo =',c7Start);
+assert.ok(c7Start>0&&c7End>c7Start,'C7 compatibility helper is available');
+const c7Env={Q,c2IsChecked:v=>v===true||v==='ja'||v==='Ja'||v===1,
+ form:{answers:{C7_Mensa:'ja',C7_RZ:'nein',C7_Sonstige:'ja',C7_Sonstige_Text:'Garten',C7_Aula:false}}};
+vm.createContext(c7Env);
+vm.runInContext(app.slice(c7Start,c7End),c7Env);
+vm.runInContext('c7EnsureAnswers(form)',c7Env);
+assert.equal(c7Env.form.answers.C7_Mensa,true,'Legacy yes is selected');
+assert.equal(c7Env.form.answers.C7_RZ,false,'Legacy no is unselected');
+assert.equal(c7Env.form.answers.C7_Lernzentrum,false,'Missing answer is auto-no');
+assert.equal(c7Env.form.answers.C7_Sonstige,true,'Legacy selected custom place remains selected');
+assert.equal(c7Env.form.answers.C7_Sonstige_Text,'Garten','Existing custom place is retained');
+assert.equal(c7Env.form.answers.C7_Sonstige2,false,'Second custom place is auto-no');
+
 console.log('PASS: PDF questionnaire A1–A6.1, B2 combinations, B7, C9–C13, export, cohort 44, network codes.');
