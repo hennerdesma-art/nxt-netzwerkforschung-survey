@@ -19,6 +19,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Verify final PDF questionnaire and JavaScript syntax
+        run: |
+          node --check js/questionnaire.js
+          node --check js/app.js
+          node --check js/network-tools.js
+          node --check js/campus-data.js
+          node tests/questionnaire_pdf_final_smoke.cjs
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Prepare public website only
