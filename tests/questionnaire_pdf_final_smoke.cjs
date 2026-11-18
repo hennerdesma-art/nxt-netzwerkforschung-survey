@@ -80,4 +80,6 @@ assert.equal(matches('Müller P11','muller'),true,'Search ignores umlaut marks')
 assert.equal(matches('Doris Elfers P44','P41'),false,'Search excludes nonmatches');
 assert.equal(matches('Agnieszka Grzesiak P41',''),true,'Empty query shows all people');
 
+assert.ok(app.includes("Etage / Flur (UG, UG 2, EG, OG 1, OG 2, …)"),'Floor field format is visible next to the label');
+assert.ok(app.includes("'z. B. EG oder OG 1'"),'All floor inputs show a consistent example placeholder');
 console.log('PASS: PDF questionnaire A1–A6.1, B2 combinations, B7, C9–C13, export, cohort 44, network codes.');
