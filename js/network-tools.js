@@ -3,6 +3,17 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const clamp=(v,a,b)=>Math.max(a,Math.min(v,b));
+  const normalizeTopics=values=>{
+    const raw=(Array.isArray(values)?values:[values]).flatMap(v=>String(v??'').toUpperCase().split(/[+,;|/]/)).map(x=>x.trim());
+    const set=new Set();
+    for(const x of raw){
+      if(x==='A'||x==='FLS'||x==='FLSV'){set.add('F');set.add('L');set.add('SV')}
+      else if(x==='S'||x==='SV'||x==='SELBSTVERWALTUNG')set.add('SV');
+      else if(x==='F'||x==='FORSCHUNG')set.add('F');
+      else if(x==='L'||x==='LEHRE')set.add('L');
+    }
+    return ['F','L','SV'].filter(x=>set.has(x));
+  };
 
   function components(nodes,edges,kind='weak'){
     const ids=new Set(nodes.map(n=>n.person?.id??n.id));
@@ -30,7 +41,7 @@
     let nodes=allNodes.filter((n,i)=>!chosen||chosen.includes(categories[i]));
     const categoryIds=new Set(nodes.map(n=>n.person.id));
     const edgeMatches=e=>categoryIds.has(e.source_person_id)&&categoryIds.has(e.target_person_id)
-      && (prefs.topic==='all'||(e.topics||[]).includes(prefs.topic))
+      && (prefs.topic==='all'||normalizeTopics(e.topics).includes(prefs.topic==='S'?'SV':prefs.topic))
       && (prefs.showLoops||e.source_person_id!==e.target_person_id);
     let categoryEdges=allEdges.filter(edgeMatches);
     if(!prefs.multipleEdges){const seen=new Set();categoryEdges=categoryEdges.filter(e=>{const k=e.source_person_id+'|'+e.target_person_id;if(seen.has(k))return false;seen.add(k);return true})}
@@ -82,9 +93,9 @@
   }
 
   function textAnalysis(edges){
-    const topics={F:0,L:0,S:0,A:0,unknown:0};const words=new Map();let withNotes=0;
+    const topics={F:0,L:0,SV:0,unknown:0};const words=new Map();let withNotes=0;
     const stop=new Set('und oder aber dass die der das den dem des ein eine einen einer eines im in am an bei mit zu zum zur von für auf aus ist sind wurde werden durch auch noch sowie hier sehr mehr zum einen nach vor wenn als ohne über unter bezieht pro eine ich wir es sich nicht keine'.split(' '));
-    for(const edge of edges){const key=(edge.topics||[])[0];topics[Object.hasOwn(topics,key)?key:'unknown']++;
+    for(const edge of edges){const keys=normalizeTopics(edge.topics);if(!keys.length)topics.unknown++;else keys.forEach(key=>topics[key]++);
       const note=String(edge.note||'').slice(0,1600);if(!note)continue;withNotes++;
       for(const raw of note.toLocaleLowerCase('de').match(/\p{L}{4,}/gu)||[]){if(stop.has(raw))continue;words.set(raw,(words.get(raw)||0)+1)}
     }
@@ -95,7 +106,7 @@
   function graphML(nodes,edges){
     const all=new Set(nodes.map(n=>n.person.id));const idMap=new Map(nodes.map((n,i)=>[n.person.id,'n'+i]));
     const bodyNodes=nodes.map(n=>`<node id="${idMap.get(n.person.id)}"><data key="label">${esc(n.person.full_name)}</data><data key="code">${esc(n.person.code)}</data><data key="building">${esc(n.person.building||'')}</data><data key="group">${esc(n.person.role_group||'')}</data></node>`).join('\n');
-    const bodyEdges=edges.filter(e=>all.has(e.source_person_id)&&all.has(e.target_person_id)).map((e,i)=>`<edge id="e${i}" source="${idMap.get(e.source_person_id)}" target="${idMap.get(e.target_person_id)}"><data key="topic">${esc((e.topics||[])[0]||'')}</data></edge>`).join('\n');
+    const bodyEdges=edges.filter(e=>all.has(e.source_person_id)&&all.has(e.target_person_id)).map((e,i)=>`<edge id="e${i}" source="${idMap.get(e.source_person_id)}" target="${idMap.get(e.target_person_id)}"><data key="topic">${esc(normalizeTopics(e.topics).join('|'))}</data></edge>`).join('\n');
     return `<?xml version="1.0" encoding="UTF-8"?>\n<graphml xmlns="http://graphml.graphdrawing.org/xmlns"><key id="label" for="node" attr.name="label" attr.type="string"/><key id="code" for="node" attr.name="code" attr.type="string"/><key id="building" for="node" attr.name="building" attr.type="string"/><key id="group" for="node" attr.name="group" attr.type="string"/><key id="topic" for="edge" attr.name="topic" attr.type="string"/><graph id="NXT" edgedefault="directed">${bodyNodes}${bodyEdges}</graph></graphml>`;
   }
 
@@ -112,7 +123,7 @@
       const internal='preview-'+i;nodeMap.set(id,internal);
       return {id:internal,code:(getData(n,['code'])||id).slice(0,50),full_name:(getData(n,['label','name'])||id).slice(0,180),building:getData(n,['building','gebäude','location']).slice(0,80),role_group:getData(n,['group','category','type','role']).slice(0,100),room:null};
     });
-    const edges=xmlEdges.map((e,i)=>({id:'preview-edge-'+i,source_person_id:nodeMap.get(e.getAttribute('source')),target_person_id:nodeMap.get(e.getAttribute('target')),topics:[getData(e,['topic','type'])].filter(Boolean),note:''}));
+    const edges=xmlEdges.map((e,i)=>({id:'preview-edge-'+i,source_person_id:nodeMap.get(e.getAttribute('source')),target_person_id:nodeMap.get(e.getAttribute('target')),topics:normalizeTopics(getData(e,['topic','type'])),note:''}));
     if(edges.some(e=>!e.source_person_id||!e.target_person_id))throw Error('GraphML enthält Kanten mit unbekannten Knoten.');
     return {people,edges};
   }
