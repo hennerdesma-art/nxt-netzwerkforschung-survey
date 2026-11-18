@@ -143,7 +143,7 @@
       }
     }
     const buildingMatrix=new Map();let crossBuilding=0,withinBuilding=0,unknownBuilding=0;
-    const topics={F:0,L:0,S:0,A:0,unknown:0};
+    const topics={F:0,L:0,SV:0,unknown:0};
     for(const e of validEdges){
       const s=byId.get(e.source_person_id),t=byId.get(e.target_person_id);if(!s||!t)continue;
       const a=clean(s.person.building),b=clean(t.person.building);
@@ -151,7 +151,7 @@
       if(!a||!b)unknownBuilding+=1;
       else if(a!==b)crossBuilding+=1;
       else withinBuilding+=1;
-      const topic=(e.topics||[])[0];if(Object.hasOwn(topics,topic))topics[topic]++;else topics.unknown++;
+      const topicCodes=normalizeB2Topics(e.topics);if(!topicCodes.length)topics.unknown++;else topicCodes.forEach(code=>topics[code]++);
     }
     const weakAdj=new Map(nodes.map(n=>[n.person.id,new Set()]));
     for(const e of validEdges){ weakAdj.get(e.source_person_id)?.add(e.target_person_id); weakAdj.get(e.target_person_id)?.add(e.source_person_id); }
@@ -204,7 +204,7 @@
     const limit=clamp(6,Number(prefs.limit)||nodes.length,Math.max(nodes.length,6));
     visible=visible.slice(0,limit);
     const visibleIds=new Set(visible.map(n=>n.person.id));
-    const visibleEdges=validEdges.filter(e=>visibleIds.has(e.source_person_id)&&visibleIds.has(e.target_person_id)&&(prefs.topic==='all'||(e.topics||[])[0]===prefs.topic));
+    const visibleEdges=validEdges.filter(e=>visibleIds.has(e.source_person_id)&&visibleIds.has(e.target_person_id)&&(prefs.topic==='all'||normalizeB2Topics(e.topics).includes(prefs.topic==='S'?'SV':prefs.topic)));
     const buildingMix=[...buildingMatrix.entries()].map(([key,count])=>({key,count})).sort((a,b)=>b.count-a.count).slice(0,6);
     const base={prefs,nodes,nodesSorted,visible,visibleEdges,validEdges,edgePairs,counts:{nodes:nodes.length,edges:validEdges.length,isolates:nodes.filter(n=>n.isolate).length,components:components.length,largestComponent:components.reduce((m,c)=>Math.max(m,c.length),0),density,reciprocity:validEdges.length?reciprocatedEdges/validEdges.length:0,mutualPairs:mutualPairs.size,crossBuilding,withinBuilding,unknownBuilding,completedCount,activeCount,coverage:nodes.length?completedCount/nodes.length:0,avgOut:nodes.length?validEdges.length/nodes.length:0},top:{degree:validEdges.length?nodes.slice().sort(sorters.degree).slice(0,5):[],out:validEdges.length?nodes.slice().sort(sorters.out).slice(0,5):[],in:validEdges.length?nodes.slice().sort(sorters.in).slice(0,5):[],between:validEdges.length?nodes.slice().sort((a,b)=>b.betweenness-a.betweenness||a.person.code.localeCompare(b.person.code)).slice(0,5):[]},buildingMix,topics};
     if(window.NXTNetworkTools){const filtered=window.NXTNetworkTools.filter(base,prefs);return {...base,visible:filtered.nodes,visibleEdges:filtered.edges,filterInfo:filtered};}
@@ -231,7 +231,7 @@
     return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Standortmix</h2><small>Haeufigste Gebaeude-Verknuepfungen</small></div>${items.length?`<div class="sheet-list">${items.map(item=>`<div class="sheet-item">${icon('location')}<div><strong>${esc(item.key)}</strong><small>${item.count} gerichtete Beziehungen</small></div><span class="pill">${item.count}</span></div>`).join('')}</div>`:empty('Noch kein Standortmix','Fuer diese Analyse werden Kanten und Gebaeudeinformationen benoetigt.','location')}<div class="notice-box" style="margin-top:18px">${icon('info')}<span>Best Practice: Netzwerkmetriken immer zusammen mit Erhebungsabdeckung und Standortdaten interpretieren.</span></div></div></div>`;
   }
   function renderTopicMix(model){
-    const label={F:'Forschung',L:'Lehre',S:'Selbstverwaltung',A:'Sonstiges',unknown:'Nicht zugeordnet'};
+    const label={F:'Forschung',L:'Lehre',SV:'Selbstverwaltung',unknown:'Nicht zugeordnet'};
     const data=Object.entries(model.topics),max=Math.max(1,...data.map(([,v])=>v));
     return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Austauschbereiche</h2><small>B2-Kategorien</small></div><div class="topic-bars">${data.map(([key,count])=>`<div class="topic-row"><div><strong>${label[key]}</strong><span>${count}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(count/max*100)}%"></div></div></div>`).join('')}</div><div class="network-caption">Mehrfachnennungen sind hier nicht berücksichtigt, da der Fragebogen je Kante einen Hauptbereich speichert.</div></div></div>`;
   }
@@ -369,12 +369,29 @@
   // Questionnaire V7: question wording, answer options and codes are sourced from
   // Fragebogen_NXT_Erfassung_2.xlsx (template P00, Listen, Codebuch).
   const Q = window.NXT_QUESTIONNAIRE || {};
+
+  // The final PDF allows all seven B2 combinations; store component codes as a text[].
+  // Legacy V7 'S' and 'A' entries remain readable without changing their meaning.
+  function normalizeB2Topics(values){
+    const tokens=(Array.isArray(values)?values:[values]).flatMap(v=>String(v??'').toUpperCase().split(/[+,/;|]/))
+      .map(x=>x.trim()).filter(Boolean);
+    const expanded=new Set();
+    for(const t of tokens){
+      if(t==='A'||t==='FLSV'||t==='FLS'){expanded.add('F');expanded.add('L');expanded.add('SV')}
+      else if(t==='S'||t==='SV'||t==='SELBSTVERWALTUNG')expanded.add('SV');
+      else if(t==='F'||t==='FORSCHUNG')expanded.add('F');
+      else if(t==='L'||t==='LEHRE')expanded.add('L');
+    }
+    return ['F','L','SV'].filter(t=>expanded.has(t));
+  }
+  const b2ComboValue=(values)=>normalizeB2Topics(values).join('+');
+
   const qChoice = (key, label, options, value, hint='') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><select id="q-${esc(key)}" data-answer="${esc(key)}">${option('','Bitte auswählen',value)}${options.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return option(v,l,value);}).join('')}</select>${hint?`<small class="field-hint">${esc(hint)}</small>`:''}</div>`;
   const qText = (key,label,value,hint='',inputType='text') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><input id="q-${esc(key)}" data-answer="${esc(key)}" type="${inputType}" value="${esc(value??'')}" placeholder="${esc(hint)}"></div>`;
   const qQuestion = (num,question,content,note='') => `<section class="question q-question"><span class="question-num">${esc(num)}</span><h3>${esc(question)}</h3>${note?`<p class="q-question-note">${esc(note)}</p>`:''}<div class="q-question-controls">${content}</div></section>`;
   const qToggle = (key,label,checked,sub='') => `<label class="q-toggle"><input type="checkbox" data-answer="${esc(key)}" ${checked?'checked':''}><span><strong>${esc(label)}</strong>${sub?`<small>${esc(sub)}</small>`:''}</span></label>`;
   const qScale = (key,question,answer) => `<div class="q-scale"><div class="q-scale-title">${esc(question)}</div>${qChoice(key,'Ihre Einschätzung',Q.likert,answer)}</div>`;
-  const qHead = (num,title,description) => `<div class="form-title"><div><span class="eyebrow">${esc(Q.version||'FRAGEBOGEN V7')} · ${num}</span><h2>${esc(title)}</h2><p>${esc(description)}</p></div><span class="pill">${num}</span></div>`;
+  const qHead = (num,title,description) => `<div class="form-title"><div><span class="eyebrow">${esc(Q.version||'PDF final')} · ${num}</span><h2>${esc(title)}</h2><p>${esc(description)}</p></div><span class="pill">${num}</span></div>`;
   const consentYes = (v) => String(v||'').startsWith('Ja,');
   const consentNo = (v) => String(v||'').startsWith('Nein,');
   const qAnswer = (key) => state.form?.answers?.[key] ?? '';
@@ -384,7 +401,7 @@
     const f=state.form, a=f.answers, consent=a.Einwilligung;
     const greeting=(Q.greeting||[]).map(txt=>`<p>${esc(txt)}</p>`).join('');
     const isDeclined=consentNo(consent);
-    return `${qHead('EINLEITUNG & TEIL A','Angaben zu Ihrer Person','Einwilligung sowie die Fragen A1 bis A6 aus der Excel-Vorlage.')}
+    return `${qHead('EINLEITUNG & TEIL A','Angaben zu Ihrer Person','Einwilligung sowie die Fragen A1 bis A6.1 des finalen PDF-Fragebogens.')}
     <div class="q-intro"><span class="eyebrow">Befragung · Wintersemester 2026/27</span><h3>${esc(Q.title)}</h3>${greeting}
       <div class="q-intro-parts"><span><strong>A</strong> Angaben zur Person</span><span><strong>B</strong> Fachlicher Austausch</span><span><strong>C</strong> Wege und Orte</span></div>
       <p><strong>Kontakt bei Fragen:</strong> ${esc(Q.projectContact||'').replace(/\n/g,' · ')}</p>
@@ -398,7 +415,7 @@
     ${qQuestion('A3',Q.questionsA.A3,qText('A3_Selbstbezeichnung','Ihre Antwort (Freitext)',a.A3_Selbstbezeichnung))}
     ${qQuestion('A4',Q.questionsA.A4,qChoice('A4_Alter','Ihre Antwort',Q.ages,a.A4_Alter))}
     ${qQuestion('A5',Q.questionsA.A5,qChoice('A5_Geschlecht','Ihre Antwort',Q.genders,a.A5_Geschlecht))}
-    ${qQuestion('A6',Q.questionsA.A6,`<div class="field-grid">${qChoice('A6_vor_NXT','Ihre Antwort',Q.yesno,a.A6_vor_NXT)}${qText('A6_seit','Ja, seit:',a.A6_seit,'Nur bei „Ja“ ausfüllen')}</div>`)}
+    ${qQuestion('A6',Q.questionsA.A6,`<div class="field-grid">${qChoice('A6_vor_NXT','Ihre Antwort',Q.yesno,a.A6_vor_NXT)}${a.A6_vor_NXT==='Ja'?qText('A6_seit','A6.1 · Falls ja, seit wann?',a.A6_seit,'Seit:'):''}</div>`)}
     `}
     <section class="question"><span class="question-num">VOM PROJEKTTEAM AUSZUFÜLLEN</span><div class="field-grid">
     ${qText('Interview_Nr','Interview-Nr.',a.Interview_Nr,'z. B. 07')}
@@ -411,11 +428,11 @@
     const opts=(field,label,choices,val)=>`<div class="field"><label>${esc(label)}</label><select data-edge-field="${field}" data-index="${idx}">${option('','Bitte auswählen',val)}${choices.map(([k,v])=>option(k,`${k} – ${v}`,val)).join('')}</select></div>`;
     return `<article class="q-peer ${selected?'selected':''}" data-peer-id="${esc(p.id)}"><div class="q-peer-main"><button type="button" class="q-peer-select" data-action="toggle-peer" data-person="${esc(p.id)}" aria-pressed="${selected}"><span class="q-peer-check">${selected?icon('check',15):''}</span><span class="q-peer-name"><strong>${esc(p.full_name)}</strong><small>${esc(p.code)} · B1 ${selected?'x':'nicht angekreuzt'}</small></span></button><span class="pill ${selected?'green':'gray'}">${selected?'Austausch':'–'}</span></div>
       ${selected?`<div class="q-peer-fields"><div class="q-peer-help">Bitte B2 bis B6 nur für angekreuzte Personen ausfüllen.</div>
-      ${opts('topics_single','B2 · Inhalt der Gespräche',Q.b2,(edge.topics||[])[0]||'')}
-      ${opts('frequency','B3 · Wie oft?',Q.b3,edge.frequency)}
-      ${opts('exchange_mode','B4 · Zustandekommen',Q.b4,edge.exchange_mode)}
-      ${opts('exchange_medium','B5 · Medium',Q.b5,edge.exchange_medium)}
-      ${opts('known_before_nxt','B6 · Kannte ich schon vor NXT?',[['true','Ja'],['false','Nein']],edge.known_before_nxt===null||edge.known_before_nxt===undefined?'':String(edge.known_before_nxt))}
+      ${opts('topics_combo','B2 · Worum geht es in den fachlichen Gesprächen?',Q.b2,b2ComboValue(edge.topics))}
+      ${opts('frequency','B3 · Häufigkeit der fachlichen Gespräche',Q.b3,edge.frequency)}
+      ${opts('exchange_mode','B4 · Zustandekommen des Austauschs',Q.b4,edge.exchange_mode)}
+      ${opts('exchange_medium','B5 · Austauschmedium',Q.b5,edge.exchange_medium)}
+      ${opts('known_before_nxt','B6 · Bereits vor Gründung der Fakultät NXT persönlich bekannt?',[['true','Ja, persönlich bekannt (nicht nur vom Sehen oder Namen)'],['false','Nein']],edge.known_before_nxt===null||edge.known_before_nxt===undefined?'':String(edge.known_before_nxt))}
       <div class="field"><label>Interne Anmerkung (optional)</label><input type="text" data-edge-field="note" data-index="${idx}" value="${esc(edge.note||'')}"></div></div>`:''}</article>`;
   }
   function renderPeerResults(){
@@ -437,7 +454,7 @@
       <div id="peer-results" class="q-peer-list">${renderPeerResults()}</div>
       ${qToggle('no_exchange','Keine fachlichen Austauschpartner genannt',Boolean(a.no_exchange),'Nur markieren, wenn dies ausdrücklich bestätigt wurde.')}
     `)}
-    ${qQuestion('B6 · EINSCHÄTZUNG','Wie sehr trifft die folgende Aussage auf Sie zu?',qScale('B_Aussage_Austausch_wichtig',Q.b_attitude,a.B_Aussage_Austausch_wichtig),'Die Excel-Vorlage verwendet B6 sowohl in der Netzwerkmatrix als auch für diese Aussage.')}`;
+    ${qQuestion('B7',Q.b7_question,qChoice('B7_Wichtigkeit','Ihre Einschätzung',Q.b7Scale,a.B7_Wichtigkeit))}`;
   }
   const qYesNo = [['ja','ja'],['nein','nein']];
   function formStepC(){
@@ -446,11 +463,11 @@
     const days=(prefix)=>`<div class="q-day-grid">${Q.weekdays.map(([k,name])=>qToggle(`${prefix}_${k}`,name,Boolean(a[`${prefix}_${k}`]))).join('')}</div>`;
     const places=(entries,prefix,withDetail)=>`<div class="q-places-list">${entries.map(([key,label])=>`<div class="q-place-row"><div>${esc(label)}</div><div>${qChoice(`${prefix}_${key}`,'ja / nein',qYesNo,a[`${prefix}_${key}`])}</div>${withDetail?`${qText(`${prefix}_${key}_Etage`,'Etage / Flur',a[`${prefix}_${key}_Etage`])}`:''}</div>`).join('')}</div>`;
     const c6=`<div class="q-c6-list">${Array.from({length:6},(_,i)=>{const l=f.locations[i]||{};return `<div class="q-c6-row"><span class="q-row-num">Eintrag ${i+1}</span><div class="field"><label>Gebäude</label><select data-location-field="building" data-index="${i}">${option('','Bitte auswählen',l.building)}${Q.buildings.map(k=>option(k,k,l.building)).join('')}</select></div><div class="field"><label>Raum</label><input type="text" data-location-field="place" data-index="${i}" value="${esc(l.place||'')}" placeholder="Raum"></div></div>`;}).join('')}</div>`;
-    const c7=`<div class="q-places-list">${Q.placesC7.map(([k,label])=>`<div class="q-place-row"><div>${esc(label)}</div>${qChoice('C7_'+k,'ja / nein',qYesNo,a['C7_'+k])}${k==='Sonstige'?qText('C7_Sonstige_Text','Anderer Ort',a.C7_Sonstige_Text):''}</div>`).join('')}</div>`;
+    const c7=`<div class="q-places-list">${Q.placesC7.map(([k,label])=>`<div class="q-place-row"><div>${esc(label)}</div>${qChoice('C7_'+k,'ja / nein',qYesNo,a['C7_'+k])}${k.startsWith('Sonstige')?qText('C7_'+k+'_Text','Sonstiger Ort',a['C7_'+k+'_Text']):''}</div>`).join('')}</div>`;
     const c8=`<div class="q-encounter-header"><span>${qCountC8()} / 3 ausgewählt</span><small>Maximal 3 Kreuze</small></div><div class="q-choice-grid">${Q.encountersC8.map(([key,label])=>qToggle('C8_'+key,label,Boolean(a['C8_'+key]))).join('')}</div>${qText('C8_Sonstige_Text','Sonstige Gebäude / Raum',a.C8_Sonstige_Text)}`;
-    const c9=`<div class="q-likert-stack">${Q.statementsC9.map((text,i)=>qScale('C9_'+(i+1),text,a['C9_'+(i+1)])).join('')}</div>`;
+    const cAssessments=['C9','C10','C11','C12','C13'].map(key=>qQuestion(key,Q.questionsC[key],qChoice(key,'Ihre Antwort',Q.scalesC[key],a[key]))).join('');
     const master=state.people.find(x=>x.id===f.personId);
-    return `${qHead('TEIL C','Ihre Wege und Orte auf dem Campus','Fragen C1–C9 gemäß Excel-Vorlage.')}
+    return `${qHead('TEIL C','Ihre Wege und Orte auf dem Campus','Fragen C1–C13 gemäß finalem PDF-Fragebogen.')}
       <div class="notice-box">${icon('location')}<span>${esc(Q.c_intro)}</span></div>
       <button class="btn btn-light q-map-button" type="button" data-action="open-map">${icon('location')} Lageplan öffnen (Nummern 1–16)</button>
       ${qQuestion('C1',Q.questionsC.C1,`<div class="field-grid">${qChoice('C1_Gebaeude','Gebäude',Q.buildings,a.C1_Gebaeude)}${qText('C1_Raum','Raumnummer',a.C1_Raum,'z. B. 111')}</div>`,master?.building||master?.room?`Bisherige Stammdaten: ${master.building||'Gebäude offen'} / ${master.room||'Raum offen'} – bitte im Interview bestätigen.`:'')}
@@ -461,7 +478,7 @@
       ${qQuestion('C6',Q.questionsC.C6,c6)}
       ${qQuestion('C7',Q.questionsC.C7,c7)}
       ${qQuestion('C8',Q.questionsC.C8,c8)}
-      ${qQuestion('C9',Q.questionsC.C9,c9)}
+      ${cAssessments}
       <div class="q-thanks"><h3>${esc(Q.thanks)}</h3><p>${esc(Q.thanks_note)}</p></div>`;
   }
   function formStepD(){
@@ -484,7 +501,7 @@
   function renderInterview(){
     if(!state.form)return empty('Kein Interview ge\u00f6ffnet','Bitte w\u00e4hle eine Person aus der Liste.','clipboard','<button class="btn btn-primary" data-action="navigate" data-route="people">Personen anzeigen</button>');
     const f=state.form,p=state.people.find(x=>x.id===f.personId);
-    return pageHead('Interviewdurchf\u00fchrung',esc(p?.full_name||'Interview'),`${esc(p?.code||'')} \u00b7 Fragebogen V7 · A1–A6, B1–B6, C1–C9 · Antworten zentral speichern.`,`<span id="dirty-indicator" class="pill ${state.draftDirty?'orange':'green'}">${state.draftDirty?'Ungespeichert':'Gespeichert'}</span><button class="btn btn-light" data-action="back-to-interviews">${icon('chevron')} Zur \u00dcbersicht</button>`)+
+    return pageHead('Interviewdurchf\u00fchrung',esc(p?.full_name||'Interview'),`${esc(p?.code||'')} \u00b7 Fragebogen final · A1–A6.1, B1–B7, C1–C13 · Antworten zentral speichern.`,`<span id="dirty-indicator" class="pill ${state.draftDirty?'orange':'green'}">${state.draftDirty?'Ungespeichert':'Gespeichert'}</span><button class="btn btn-light" data-action="back-to-interviews">${icon('chevron')} Zur \u00dcbersicht</button>`)+
     `<div class="interview-layout"><aside class="panel interview-rail">${stepNames.map((name,index)=>`<button type="button" class="step-button ${state.step===index?'active':''}" data-action="step" data-step="${index}" aria-current="${state.step===index?'step':'false'}"><span class="step-index">${index+1}</span><span class="step-name">${name}</span></button>`).join('')}<div class="step-separator"></div><div style="padding:10px 8px;font-size:11px;line-height:1.7;color:var(--muted)">${icon('shield',15)} Jede Speicherung wird auf Bearbeitungskonflikte gepr\u00fcft.</div></aside><section class="panel interview-form-card">${[formStepA,formStepB,formStepC,formStepD][state.step]()}<div class="form-footer"><button type="button" class="btn btn-light" data-action="previous-step" ${state.step===0?'disabled':''}>Zur\u00fcck</button><div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn btn-ghost" data-action="save-draft">${icon('save')} Entwurf sichern</button>${state.step<3?`<button type="button" class="btn btn-primary" data-action="next-step">Weiter ${icon('arrow')}</button>`:`<button type="button" class="btn btn-primary" data-action="save-completed">${icon('check')} ${consentNo(f.answers.Einwilligung)?'Ablehnung dokumentieren':'Abschließen'}</button>`}</div></div></section></div>`;
   }
 
@@ -497,7 +514,7 @@
   function renderDetailedNetworkMetrics(model){const m=window.NXTNetworkTools?.statistics(model.nodes,model.validEdges);if(!m)return empty('Auswertung nicht verfügbar','Bitte aktualisieren.','network');
     const sorted=model.nodes.slice().sort((a,b)=>b.degree-a.degree||a.person.full_name.localeCompare(b.person.full_name,'de'));
     return `<div class="stat-grid network-metrics-grid">${stat('Schwach verbundene Komponenten',m.weakComponents,'Ungerichtete Erreichbarkeit','network')}${stat('Stark verbundene Komponenten',m.strongComponents,'Gegenseitige gerichtete Erreichbarkeit','network')}${stat('Größte Komponente',m.largestComponent,'Personen','users')}${stat('Gerichtete Dichte',(m.density*100).toFixed(1)+' %','Kanten / n(n–1)','chart')}${stat('Erreichbarkeit',(m.reachRate*100).toFixed(1)+' %','Gerichtet erreichbare Personenpaare','chart')}${stat('Kanten',m.m,'Einschließlich paralleler Kanten','network')}</div><div class="panel"><div class="panel-inner"><h2>Zentralität je Person</h2><p class="muted small">In-/Out-Degree, Gesamtgrad, gerichtete Betweenness und harmonisierte Erreichbarkeits-Nähe. Werte sind deskriptiv; keine Signifikanztests.</p></div><div class="table-wrap"><table class="data-table"><thead><tr><th>ID</th><th>Person</th><th>In</th><th>Out</th><th>Gesamt</th><th>Betweenness</th><th>Closeness</th></tr></thead><tbody>${sorted.map(n=>`<tr><td>${esc(n.person.code)}</td><td>${esc(n.person.full_name)}</td><td>${n.inDegree}</td><td>${n.outDegree}</td><td>${n.degree}</td><td>${(n.betweenness*100).toFixed(1)} %</td><td>${((m.closeness.get(n.person.id)||0)*100).toFixed(1)} %</td></tr>`).join('')}</tbody></table></div></div><div class="notice-box warn" style="margin-top:18px">${icon('info')}<span>Die bisherigen Interviews können unvollständig sein. Nicht genannte Beziehungen bei offenen Interviews dürfen nicht als fehlende Kontakte interpretiert werden.</span></div>`;}
-  function renderTextNetworkAnalysis(model){const a=window.NXTNetworkTools?.textAnalysis(model.validEdges);if(!a)return '';const labels={F:'Forschung',L:'Lehre',S:'Selbstverwaltung',A:'Sonstiges',unknown:'Nicht zugeordnet'},max=Math.max(1,...Object.values(a.topics));
+  function renderTextNetworkAnalysis(model){const a=window.NXTNetworkTools?.textAnalysis(model.validEdges);if(!a)return '';const labels={F:'Forschung',L:'Lehre',SV:'Selbstverwaltung',unknown:'Nicht zugeordnet'},max=Math.max(1,...Object.values(a.topics));
     return `<div class="dash-grid"><div class="panel panel-inner"><div class="panel-head"><h2>Austauschbereiche (B2)</h2><small>${a.total} beobachtete Kanten</small></div><div class="topic-bars">${Object.entries(a.topics).map(([key,n])=>`<div class="topic-row"><div><strong>${esc(labels[key])}</strong><span>${n}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(n/max*100)}%"></div></div></div>`).join('')}</div><p class="muted small">Eine Hauptkategorie pro Austauschbeziehung. Keine automatische Interpretation von Freitexten.</p></div><div class="panel panel-inner"><div class="panel-head"><h2>Häufige Begriffe in Kanten-Notizen</h2><small>${a.withNotes} Notizfelder</small></div>${a.frequencies.length?`<div class="network-word-list">${a.frequencies.map(([word,count])=>`<span class="pill">${esc(word)} <strong>${count}</strong></span>`).join('')}</div>`:empty('Keine wiederholten Begriffe','Mindestens zwei Vorkommen eines Begriffs sind nötig.','file')}<p class="muted small">Nur aggregierte Wortfrequenzen (ab 2 Vorkommen). Freitexte werden nicht automatisch öffentlich angezeigt; personenbezogene Angaben in Notizen weiterhin schützen.</p></div></div>`;}
   function renderNetworkAssortativity(model){const p=model.prefs,attribute=p.assortAttribute||'building',a=window.NXTNetworkTools?.assortativity(model.nodes,model.validEdges,attribute);if(!a)return '';
     const max=Math.max(1,...a.matrix.flat());return `<div class="panel panel-inner"><div class="panel-head"><div><h2>Kategorienassortativität</h2><small>Verbindungen zwischen gleichen und unterschiedlichen Kategorien</small></div><div class="field"><label for="assort-attribute">Merkmal</label><select id="assort-attribute" data-network-input="assortAttribute">${option('building','Gebäude',attribute)}${option('role_group','Mitarbeitergruppe',attribute)}</select></div></div><div class="network-kpi"><div class="summary-item"><strong>${a.coefficient===null?'n. a.':a.coefficient.toFixed(3)}</strong><small>Newman-Assortativität r (gerichtet)</small></div><div class="summary-item"><strong>${(a.sameShare*100).toFixed(1)} %</strong><small>Kanten innerhalb derselben Kategorie</small></div><div class="summary-item"><strong>${a.valid}</strong><small>Kanten mit bekannten Merkmalen</small></div></div>${a.valid?`<div class="table-wrap"><table class="data-table nxt-matrix-table"><thead><tr><th>Von ↓ / Nach →</th>${a.categories.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${a.matrix.map((row,i)=>`<tr><th>${esc(a.categories[i])}</th>${row.map(value=>`<td style="background:rgba(0,139,146,${(0.07+0.38*value/max).toFixed(2)})">${value}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:empty('Keine auswertbaren Beziehungen','Erfasst sein müssen fachliche Beziehungen und zugehörige Kategorien.','network')}<div class="notice-box" style="margin-top:18px">${icon('info')}<span>r liegt theoretisch zwischen −1 und +1: positiv bedeutet tendenziell mehr Beziehungen innerhalb derselben Kategorie. Fehlende Standorte oder Gruppen wurden ausgeschlossen (${a.excluded} Kanten). Ein unvollständiger Rücklauf und kleine Zellzahlen können die Interpretation stark verzerren.</span></div></div>`;}
@@ -516,8 +533,8 @@
     const building=['5','16','17','21','D'];
     const people=Array.from({length:20},(_,i)=>({id:`demo-${i+1}`,code:`DEMO-${String(i+1).padStart(2,'0')}`,full_name:`Beispielperson ${String(i+1).padStart(2,'0')}`,building:building[i%5],role_group:i%3===0?'Professor:innen':'Wissenschaftliche Mitarbeitende'}));
     const edges=[];const add=(a,b,t)=>edges.push({id:`demo-edge-${edges.length}`,source_person_id:people[a].id,target_person_id:people[b].id,topics:[t],frequency:'3',note:''});
-    for(let i=0;i<17;i++){add(i,(i+3)%20,['F','L','S'][i%3]);if(i%2===0)add(i,(i+7)%20,'F');}
-    add(1,0,'S');add(0,1,'F');return {people,edges};
+    for(let i=0;i<17;i++){add(i,(i+3)%20,['F','L','SV'][i%3]);if(i%2===0)add(i,(i+7)%20,'F');}
+    add(1,0,'SV');add(0,1,'F');return {people,edges};
   }
   function graphSnapshot(){const model=computeNetworkModel();return {model,nodes:model.visible.map(n=>({id:n.person.id,code:n.person.code,label:n.person.full_name,building:n.building,role_group:n.person.role_group||'',degree:n.degree,inDegree:n.inDegree,outDegree:n.outDegree,betweenness:n.betweenness})),edges:model.visibleEdges.map(e=>({source:e.source_person_id,target:e.target_person_id})),prefs:{...model.prefs,preview:null}};}
   async function exportNetworkGraphic(format){
@@ -674,7 +691,8 @@
         state.form.edges=[];
       }
       state.form.answers[key]=val;markDirty();
-      if(key==='Einwilligung'||key==='no_exchange'){render();}
+      if(key==='A6_vor_NXT'&&val!=='Ja')delete state.form.answers.A6_seit;
+      if(key==='Einwilligung'||key==='no_exchange'||key==='A6_vor_NXT'){render();}
       if(key.startsWith('C8_')&&el.type==='checkbox'){
         const counter=qs('.q-encounter-header span');if(counter)counter.textContent=qCountC8()+' / 3 ausgewählt';
       }
@@ -682,7 +700,7 @@
     }
     if(el.dataset.edgeField){
       const edge=state.form.edges[Number(el.dataset.index)];if(!edge)return;
-      if(el.dataset.edgeField==='topics_single')edge.topics=el.value?[el.value]:[];
+      if(el.dataset.edgeField==='topics_combo')edge.topics=normalizeB2Topics(el.value);
       else if(el.dataset.edgeField==='known_before_nxt')edge.known_before_nxt=el.value===''?null:el.value==='true';
       else edge[el.dataset.edgeField]=el.value;
       markDirty();return;
@@ -715,7 +733,12 @@
     }
     state.busy=true;
     try{
-      const answers={...a,Kuerzel:clean(f.interviewer_name)};
+      const answers={...a,Kuerzel:clean(f.interviewer_name),Fragebogen_Version:Q.version};
+      // Remove accidental leading/trailing or repeated spaces in free-text answers.
+      for(const key of Object.keys(answers)){
+        if(typeof answers[key]==='string'&&key!=='Einwilligung')
+          answers[key]=answers[key].trim().replace(/\s{2,}/g,' ');
+      }
       for(let i=0;i<6;i++){
         answers['C6_Gebaeude_'+(i+1)]=f.locations[i]?.building||'';
         answers['C6_Raum_'+(i+1)]=f.locations[i]?.place||'';
@@ -731,7 +754,7 @@
         p_unit:clean(f.unit),p_building:refused?clean(f.building):clean(a.C1_Gebaeude||f.building),
         p_room:refused?clean(f.room):clean(a.C1_Raum||f.room),
         p_answers:Object.entries(safeAnswers).filter(([k,v])=>v!==undefined).map(([question_key,answer])=>({question_key,answer})),
-        p_edges:refused?[]:f.edges.map(e=>({...e,note:clean(e.note),exchange_medium:e.exchange_medium||null,known_before_nxt:e.known_before_nxt??null})),
+        p_edges:refused?[]:f.edges.map(e=>({...e,topics:normalizeB2Topics(e.topics),note:clean(e.note),exchange_medium:e.exchange_medium||null,known_before_nxt:e.known_before_nxt??null})),
         p_locations:refused?[]:f.locations.filter(l=>clean(l.building)).map(l=>({...l}))};
       const {data,error}=await state.db.rpc('save_interview_snapshot',body);
       if(error)throw error;
