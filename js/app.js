@@ -412,7 +412,19 @@
   }
   const b2ComboValue=(values)=>normalizeB2Topics(values).join('+');
 
-  const qChoice = (key, label, options, value, hint='') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><select id="q-${esc(key)}" data-answer="${esc(key)}">${option('','Bitte auswählen',value)}${options.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return option(v,l,value);}).join('')}</select>${hint?`<small class="field-hint">${esc(hint)}</small>`:''}</div>`;
+  // Preserve historic Supabase answers; map earlier C12/C13 choices by ordinal
+  // position only when displaying questions or writing numeric Excel exports.
+  const legacyC12C13={
+    C12:['Viel zu wenige','Eher zu wenige','Genau richtig','Eher zu viele','Viel zu viele'],
+    C13:['Viel zu wenig','Eher zu wenig','Genau richtig','Eher zu viel','Viel zu viel']
+  };
+  const normalizeC12C13=(key,value)=>{
+    const old=legacyC12C13[key],current=Q.scalesC?.[key];
+    const index=old?.indexOf(value);
+    return index>=0&&Array.isArray(current)?current[index]:value;
+  };
+
+  const qChoice = (key, label, options, value, hint='') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><select id="q-${esc(key)}" data-answer="${esc(key)}">${option('','Bitte auswählen',normalizeC12C13(key,value))}${options.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return option(v,l,normalizeC12C13(key,value));}).join('')}</select>${hint?`<small class="field-hint">${esc(hint)}</small>`:''}</div>`;
   const qText = (key,label,value,hint='',inputType='text') => `<div class="field"><label for="q-${esc(key)}">${esc(label)}</label><input id="q-${esc(key)}" data-answer="${esc(key)}" type="${inputType}" value="${esc(value??'')}" placeholder="${esc(hint)}"></div>`;
   const qQuestion = (num,question,content,note='') => `<section class="question q-question"><span class="question-num">${esc(num)}</span><h3>${esc(question)}</h3>${note?`<p class="q-question-note">${esc(note)}</p>`:''}<div class="q-question-controls">${content}</div></section>`;
   const qToggle = (key,label,checked,sub='') => `<label class="q-toggle"><input type="checkbox" data-answer="${esc(key)}" ${checked?'checked':''}><span><strong>${esc(label)}</strong>${sub?`<small>${esc(sub)}</small>`:''}</span></label>`;
@@ -1055,7 +1067,7 @@
       C9:Q.scalesC.C9,C10:Q.scalesC.C10,C11:Q.scalesC.C11,
       C12:Q.scalesC.C12,C13:Q.scalesC.C13
     };
-    if(maps[key])return excelLookup(v,maps[key]);
+    if(maps[key])return excelLookup(normalizeC12C13(key,v),maps[key]);
     if(key==='C5_Ankunft'){
       if(!v)return '';
       if(String(v)==='direkt an meinem Gebäude')return 98;
