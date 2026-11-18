@@ -233,7 +233,7 @@
   function renderTopicMix(model){
     const label={F:'Forschung',L:'Lehre',SV:'Selbstverwaltung',unknown:'Nicht zugeordnet'};
     const data=Object.entries(model.topics),max=Math.max(1,...data.map(([,v])=>v));
-    return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Austauschbereiche</h2><small>B2-Kategorien</small></div><div class="topic-bars">${data.map(([key,count])=>`<div class="topic-row"><div><strong>${label[key]}</strong><span>${count}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(count/max*100)}%"></div></div></div>`).join('')}</div><div class="network-caption">Mehrfachnennungen sind hier nicht berücksichtigt, da der Fragebogen je Kante einen Hauptbereich speichert.</div></div></div>`;
+    return `<div class="panel"><div class="panel-inner"><div class="panel-head"><h2>Austauschbereiche</h2><small>B2-Kategorien</small></div><div class="topic-bars">${data.map(([key,count])=>`<div class="topic-row"><div><strong>${label[key]}</strong><span>${count}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(count/max*100)}%"></div></div></div>`).join('')}</div><div class="network-caption">Mehrfachnennungen werden berücksichtigt: Eine Austauschbeziehung kann Forschung, Lehre und Selbstverwaltung zugleich umfassen.</div></div></div>`;
   }
   function renderNetworkControls(model){
     const p=model.prefs, maxNodes=Math.max(1,model.nodes.length), cats=model.filterInfo?.categories||[];
