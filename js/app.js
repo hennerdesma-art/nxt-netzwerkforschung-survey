@@ -386,6 +386,7 @@
         building:p.building||'',room:p.room||'',answers,
         edges:results[1].data.map(e=>({target_person_id:e.target_person_id,frequency:e.frequency||'',topics:e.topics||[],exchange_mode:e.exchange_mode||'',exchange_medium:e.exchange_medium||'',known_before_nxt:e.known_before_nxt??null,note:e.note||''})),
         locations:Array.from({length:Math.max(6,results[2].data.length)},(_,i)=>{const l=results[2].data[i]||{};return {building:l.building||'',place:l.place||'',frequency:l.frequency||'',notes:l.notes||''};})};
+      c2EnsureAnswers(state.form);
       state.peerQuery='';state.peerOnly=false;state.route='interview';state.step=0;state.draftDirty=false;render();window.scrollTo(0,0);
     }catch(e){toast('Interview konnte nicht geladen werden: '+(e.message||e),'error');}
     finally{state.busy=false;}
@@ -480,12 +481,73 @@
     `)}
     ${qQuestion('B7',Q.b7_question,qChoice('B7_Wichtigkeit','Ihre Einschätzung',Q.b7Scale,a.B7_Wichtigkeit))}`;
   }
+
+  // C2 room usage: a boolean answer plus any number of building/floor entries.
+  // Historic yes/no + single floor answers are loaded into the new list in memory.
+  const c2IsChecked=value=>value===true||value==='ja'||value==='Ja'||value===1;
+  const c2Base=key=>'C2_'+key;
+  const c2KnownKey=key=>(Q.spacesC2||[]).some(([code])=>code===key);
+  const c2OfficeBuilding=form=>form?.answers?.C1_Gebaeude||form?.building||'';
+  const c2NewLocation=form=>({building:c2OfficeBuilding(form),floor:'',followOffice:true});
+  function c2EnsureAnswers(form){
+    if(!form?.answers)return;
+    for(const [key] of Q.spacesC2||[]){
+      const base=c2Base(key),enabled=c2IsChecked(form.answers[base]);
+      const prior=form.answers[base+'_Standorte'];
+      const entries=Array.isArray(prior)?prior.filter(v=>v&&typeof v==='object'&&!Array.isArray(v)).map(item=>({
+        building:String(item.building||''),floor:String(item.floor||''),followOffice:item.followOffice===true
+      })):[];
+      // A legacy single-floor C2 entry must not disappear when this form is reopened.
+      if(enabled&&!entries.length){
+        entries.push({...c2NewLocation(form),floor:String(form.answers[base+'_Etage']||'')});
+      }
+      form.answers[base]=enabled;
+      form.answers[base+'_Standorte']=enabled?entries:[];
+    }
+  }
+  function c2SyncOldFloor(form,key){
+    const base=c2Base(key),items=form.answers[base+'_Standorte'];
+    form.answers[base+'_Etage']=c2IsChecked(form.answers[base])&&Array.isArray(items)?
+      String(items[0]?.floor||''):'';
+  }
+  function c2SetOfficeBuilding(form,building){
+    for(const [key] of Q.spacesC2||[]){
+      const entries=form.answers[c2Base(key)+'_Standorte'];
+      if(!Array.isArray(entries))continue;
+      for(const entry of entries){
+        if(entry.followOffice===true)entry.building=building;
+      }
+    }
+  }
+
   const qYesNo = [['ja','ja'],['nein','nein']];
   function formStepC(){
     const f=state.form,a=f.answers;
     if(consentNo(a.Einwilligung))return `${qHead('TEIL C','Ihre Wege und Orte','Teilnahme wurde abgelehnt.')}<div class="notice-box warn">Bitte nur die Ablehnung dokumentieren.</div>`;
     const days=(prefix)=>`<div class="q-day-grid">${Q.weekdays.map(([k,name])=>qToggle(`${prefix}_${k}`,name,Boolean(a[`${prefix}_${k}`]))).join('')}</div>`;
-    const places=(entries,prefix,withDetail)=>`<div class="q-places-list">${entries.map(([key,label])=>`<div class="q-place-row"><div>${esc(label)}</div><div>${qChoice(`${prefix}_${key}`,'ja / nein',qYesNo,a[`${prefix}_${key}`])}</div>${withDetail?`${qText(`${prefix}_${key}_Etage`,'Etage / Flur (UG, UG 2, EG, OG 1, OG 2, …)',a[`${prefix}_${key}_Etage`],'z. B. EG oder OG 1')}`:''}</div>`).join('')}</div>`;
+    const placesC2=()=>'<div class="q-c2-list">'+(Q.spacesC2||[]).map(([key,title])=>{
+      const base=c2Base(key),enabled=c2IsChecked(a[base]);
+      const entries=enabled&&Array.isArray(a[base+'_Standorte'])?a[base+'_Standorte']:[];
+      const labelId='c2-'+key;
+      return '<section class="q-c2-card" aria-labelledby="'+labelId+'">'+
+        '<div class="q-c2-header"><label class="q-c2-checkbox" id="'+labelId+'">'+
+        '<input type="checkbox" data-c2-toggle="'+esc(key)+'" '+(enabled?'checked':'')+'>'+
+        '<span><strong>'+esc(title)+'</strong><small>Häkchen = Ja · leer = Nein</small></span></label>'+
+        '<button type="button" class="btn btn-light btn-sm q-c2-add" data-action="c2-add" data-c2-key="'+esc(key)+'" aria-label="Weiteren Standort für '+esc(title)+' hinzufügen">'+icon('plus',15)+' <span>Standort hinzufügen</span></button></div>'+
+        (enabled?'<div class="q-c2-locations">'+entries.map((item,i)=>{
+          const current=String(item.building||''),id='c2-'+key+'-'+i;
+          const buildings=(Q.buildings||[]).slice();
+          if(current&&!buildings.includes(current))buildings.unshift(current);
+          return '<div class="q-c2-location-row"><div class="field">'+
+            '<label for="'+id+'-building">Gebäude</label>'+
+            '<select id="'+id+'-building" data-c2-field="building" data-c2-key="'+esc(key)+'" data-c2-index="'+i+'">'+
+              option('','Bitte auswählen',current)+buildings.map(b=>option(b,b,current)).join('')+'</select></div>'+
+            '<div class="field"><label for="'+id+'-floor">Etage / Flur <small>(UG, EG, OG 1, OG 2 …)</small></label>'+
+              '<input id="'+id+'-floor" type="text" maxlength="60" data-c2-field="floor" data-c2-key="'+esc(key)+'" data-c2-index="'+i+'" value="'+esc(item.floor||'')+'" placeholder="z. B. EG oder OG 1"></div>'+
+            '<button type="button" class="q-c2-remove" data-action="c2-remove" data-c2-key="'+esc(key)+'" data-c2-index="'+i+'" aria-label="Standort '+(i+1)+' bei '+esc(title)+' entfernen" title="Standort entfernen">'+icon('x',16)+'</button></div>';
+        }).join('')+'</div>':'<p class="q-c2-hint">Nicht ausgewählt – wird als „Nein“ gespeichert.</p>')+
+        '</section>';
+    }).join('')+'</div>';
     const c6=`<div class="q-c6-list">${Array.from({length:6},(_,i)=>{const l=f.locations[i]||{};return `<div class="q-c6-row"><span class="q-row-num">Eintrag ${i+1}</span><div class="field"><label>Gebäude</label><select data-location-field="building" data-index="${i}">${option('','Bitte auswählen',l.building)}${Q.buildings.map(k=>option(k,k,l.building)).join('')}</select></div><div class="field"><label>Raum</label><input type="text" data-location-field="place" data-index="${i}" value="${esc(l.place||'')}" placeholder="Raum"></div></div>`;}).join('')}</div>`;
     const c7=`<div class="q-places-list">${Q.placesC7.map(([k,label])=>`<div class="q-place-row"><div>${esc(label)}</div>${qChoice('C7_'+k,'ja / nein',qYesNo,a['C7_'+k])}${k.startsWith('Sonstige')?qText('C7_'+k+'_Text','Sonstiger Ort',a['C7_'+k+'_Text']):''}</div>`).join('')}</div>`;
     const c8=`<div class="q-encounter-header"><span>${qCountC8()} / 3 ausgewählt</span><small>Maximal 3 Kreuze</small></div><div class="q-choice-grid">${Q.encountersC8.map(([key,label])=>qToggle('C8_'+key,label,Boolean(a['C8_'+key]))).join('')}</div>${qText('C8_Sonstige_Text','Sonstige Gebäude / Raum',a.C8_Sonstige_Text)}`;
@@ -495,7 +557,7 @@
       <div class="notice-box">${icon('location')}<span>${esc(Q.c_intro)}</span></div>
       <button class="btn btn-light q-map-button" type="button" data-action="open-map">${icon('location')} Lageplan öffnen (Nummern 1–16)</button>
       ${qQuestion('C1',Q.questionsC.C1,`<div class="field-grid">${qChoice('C1_Gebaeude','Gebäude',Q.buildings,a.C1_Gebaeude)}${qText('C1_Raum','Raumnummer',a.C1_Raum,'z. B. 111')}</div>`,master?.building||master?.room?`Bisherige Stammdaten: ${master.building||'Gebäude offen'} / ${master.room||'Raum offen'} – bitte im Interview bestätigen.`:'')}
-      ${qQuestion('C2',Q.questionsC.C2,places(Q.spacesC2,'C2',true))}
+      ${qQuestion('C2',Q.questionsC.C2,placesC2())}
       ${qQuestion('C3',Q.questionsC.C3,days('C3'))}
       ${qQuestion('C4',Q.questionsC.C4,days('C4'))}
       ${qQuestion('C5',Q.questionsC.C5,`<div class="field-grid">${qChoice('C5_Ankunft','Ihre Antwort',Q.arrivals,a.C5_Ankunft)}${qText('C5_anderer_Ort','anderer Ort:',a.C5_anderer_Ort,'Nur bei „anderer Ort“')}</div>`)}
@@ -706,9 +768,47 @@
     if(el.id==='peer-only'){
       state.peerOnly=el.checked;const list=qs('#peer-results');if(list)list.innerHTML=renderPeerResults();return;
     }
+    if(el.dataset.c2Toggle!==undefined){
+      if(e.type!=='change')return;
+      const key=el.dataset.c2Toggle;
+      if(!c2KnownKey(key))return;
+      const base=c2Base(key),checked=el.checked,answers=state.form.answers;
+      answers[base]=checked;
+      if(checked){
+        if(!Array.isArray(answers[base+'_Standorte'])||!answers[base+'_Standorte'].length){
+          answers[base+'_Standorte']=[c2NewLocation(state.form)];
+        }
+      }else{
+        answers[base+'_Standorte']=[];
+      }
+      c2SyncOldFloor(state.form,key);
+      markDirty();render();return;
+    }
+    if(el.dataset.c2Field!==undefined){
+      const key=el.dataset.c2Key,index=Number(el.dataset.c2Index),field=el.dataset.c2Field;
+      if(!c2KnownKey(key)||!['building','floor'].includes(field)||!Number.isInteger(index)||index<0)return;
+      const entry=state.form.answers[c2Base(key)+'_Standorte']?.[index];
+      if(!entry)return;
+      if(field==='building'){
+        if(e.type!=='change')return;
+        entry.building=el.value;
+        entry.followOffice=false;
+      }else{
+        if(e.type!=='input')return;
+        entry.floor=el.value;
+        if(index===0)c2SyncOldFloor(state.form,key);
+      }
+      markDirty();return;
+    }
     if(el.dataset.field){state.form[el.dataset.field]=el.value;markDirty();return;}
     if(el.dataset.answer){
       const key=el.dataset.answer,val=el.type==='checkbox'?el.checked:el.value;
+      if(key==='C1_Gebaeude'&&e.type==='input')return;
+      if(key==='C1_Gebaeude'){
+        state.form.answers.C1_Gebaeude=val;
+        c2SetOfficeBuilding(state.form,val);
+        markDirty();render();return;
+      }
       if(key.startsWith('C8_')&&el.type==='checkbox'&&val&&qCountC8()>=3&&!state.form.answers[key]){
         el.checked=false;toast('Bei C8 dürfen höchstens 3 Orte angekreuzt werden.','error');return;
       }
@@ -749,6 +849,12 @@
       if(!consentYes(a.Einwilligung)&&!refused){state.step=0;render();toast('Bitte Einwilligung oder Ablehnung dokumentieren.','error');return;}
       if(!clean(f.interviewer_name)){state.step=0;render();toast('Bitte das Kürzel der interviewenden Person eintragen.','error');return;}
       if(qCountC8()>3){state.step=2;render();toast('Bei C8 sind höchstens drei Angaben möglich.','error');return;}
+      const missingC2Building=(Q.spacesC2||[]).some(([key])=>{
+        const a=state.form.answers,base=c2Base(key);
+        return c2IsChecked(a[base])&&(!Array.isArray(a[base+'_Standorte'])||!a[base+'_Standorte'].length||
+          a[base+'_Standorte'].some(loc=>!String(loc.building||'').trim()));
+      });
+      if(missingC2Building){state.step=2;render();toast('Bei C2 bitte für jeden ausgewählten Standort ein Gebäude angeben.','error');return;}
       if(f.locations.slice(0,6).some(l=>!clean(l.building)&&clean(l.place))){state.step=2;render();toast('Bei C6 bitte bei jedem ausgefüllten Raum auch das Gebäude angeben.','error');return;}
       if(f.edges.some(e=>!e.target_person_id)){state.step=1;render();toast('Bei B1 ist eine Zielperson nicht ausgewählt.','error');return;}
       if(f.edges.length&&a.no_exchange){state.step=1;render();toast('B1: Kanten erfasst und gleichzeitig „keine Austauschpartner“ markiert.','error');return;}
@@ -760,6 +866,16 @@
     state.busy=true;
     try{
       const answers={...a,Kuerzel:clean(f.interviewer_name),Fragebogen_Version:Q.version};
+      for(const [key] of Q.spacesC2||[]){
+        const base=c2Base(key),yes=c2IsChecked(answers[base]);
+        const rows=Array.isArray(answers[base+'_Standorte'])?answers[base+'_Standorte']:[];
+        answers[base]=yes;
+        answers[base+'_Standorte']=yes?rows.map(loc=>({
+          building:String(loc.building||'').trim(),floor:String(loc.floor||'').trim().replace(/\s{2,}/g,' '),
+          followOffice:loc.followOffice===true
+        })):[];
+        answers[base+'_Etage']=yes?(answers[base+'_Standorte'][0]?.floor||''):'';
+      }
       // Remove accidental leading/trailing or repeated spaces in free-text answers.
       for(const key of Object.keys(answers)){
         if(typeof answers[key]==='string'&&key!=='Einwilligung')
@@ -1035,6 +1151,23 @@
       markDirty();render();return;
     }
     if(a==='delete-edge'){state.form.edges.splice(Number(btn.dataset.index),1);markDirty();render();return;}
+    if(a==='c2-add'||a==='c2-remove'){
+      if(!state.form||!c2KnownKey(btn.dataset.c2Key))return;
+      const key=btn.dataset.c2Key,base=c2Base(key),answers=state.form.answers;
+      const current=Array.isArray(answers[base+'_Standorte'])?answers[base+'_Standorte']:[];
+      if(a==='c2-add'){
+        answers[base]=true;
+        current.push(c2NewLocation(state.form));
+      }else{
+        const index=Number(btn.dataset.c2Index);
+        if(!Number.isInteger(index)||index<0||index>=current.length)return;
+        current.splice(index,1);
+        if(!current.length)answers[base]=false;
+      }
+      answers[base+'_Standorte']=current;
+      c2SyncOldFloor(state.form,key);
+      markDirty();render();return;
+    }
     if(a==='add-location'){state.form.locations.push({building:'',place:'',frequency:'',notes:''});markDirty();render();return;}
     if(a==='delete-location'){state.form.locations.splice(Number(btn.dataset.index),1);markDirty();render();return;}
     if(a==='save-draft'){await saveInterview('in_progress');return;}
