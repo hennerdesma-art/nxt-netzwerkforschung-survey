@@ -52,7 +52,7 @@
       {key:'C2_Sekretariat',label:'Sekretariat / Postfächer',group:'Geteilte Infrastruktur (C2)'},
       {key:'C2_Meeting',label:'Meetingräume',group:'Geteilte Infrastruktur (C2)'}
     ],
-    topicLabels:{F:'Forschung',L:'Lehre',S:'Selbstverwaltung',A:'Anderes'},
+    topicLabels:{F:'Forschung',L:'Lehre',SV:'Selbstverwaltung'},
     // No metric shortest paths until a surveyed, entrance-to-entrance route graph has been provided.
     distanceModel:{status:'not_calibrated',unit:null,method:'pending door-to-door routing'}
   };
