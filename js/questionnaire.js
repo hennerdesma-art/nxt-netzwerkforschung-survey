@@ -1,13 +1,13 @@
 /* NXT research instrument, derived from supplied questionnaire V7. No participant names. */
 window.NXT_QUESTIONNAIRE = Object.freeze({
-  "version": "Excel-Fragebogen V7 | Wintersemester 2026/27",
+  "version": "PDF final · Wintersemester 2026/27",
   "title": "Befragung: Räume und fachlicher Austausch an der Fakultät NXT",
   "semester": "Semesterprojekt Netzwerkforschung · Wintersemester 2026/27",
   "greeting": [
     "Liebe Kolleginnen und Kollegen,",
     "vielen Dank, dass Sie sich Zeit für unsere Befragung nehmen!",
     "Wir sind Studierende im Master Operations Management und untersuchen in einem Semesterprojekt, wie die räumliche Anordnung und die alltäglichen Wege in der Fakultät NXT mit dem fachlichen Austausch zwischen Kolleginnen und Kollegen zusammenhängen. Uns interessiert besonders der Austausch über Fachgrenzen hinweg.",
-    "Ablauf: Die Befragung besteht aus drei kurzen Teilen und dauert etwa 20 Minuten:"
+    "Ablauf: Die Befragung besteht aus drei kurzen Teilen und dauert maximal 20 Minuten:"
   ],
   "privacy_original": "Datenschutz: Die Teilnahme ist freiwillig. Sie können jede Frage überspringen und die Befragung jederzeit abbrechen. Ihre Angaben werden direkt nach der Erfassung pseudonymisiert, das heißt: Namen werden durch Nummern ersetzt. Ergebnisse werden ausschließlich in zusammengefasster Form berichtet, sodass keine Rückschlüsse auf einzelne Personen möglich sind. Netzwerkgrafiken werden nur anonymisiert dargestellt. Die ausgefüllten Bögen werden verschlossen aufbewahrt und nach der Auswertung vernichtet. Weitere Informationen finden Sie im beiliegenden Informationsblatt. Den Lageplan für Teil C finden Sie am Ende des Fragebogens.",
   "projectContact": "Kontakt bei Fragen: Zacherl, Nick (Nick.Zacherl@Student.Reutlingen-University.DE)\nSchachtschneider, Noah (Noah.Schachtschneider@Student.Reutlingen-University.DE)\nWalker, Noa (Noa.Walker@Student.Reutlingen-University.DE)",
@@ -18,17 +18,19 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     "Nein, ich möchte nicht teilnehmen."
   ],
   "questionsA": {
-    "A1": "Welche Gruppe der Mitarbeitenden der Fakultät NXT fühlen Sie sich zugehörig?",
-    "A2": "Welcher fachlich inhaltlichen Kategorie fühlen sie sich zugehörig? (Nur 1x Kreuz)",
-    "A3": "Welcher beruflichen Selbstbezeichnung würden Sie sich zuordnen?",
+    "A1": "Welcher Gruppe der Mitarbeitenden der Fakultät NXT fühlen Sie sich zugehörig?",
+    "A2": "Welcher fachlich inhaltlichen Kategorie fühlen Sie sich am ehesten zugehörig? (bitte nur eine Antwort ankreuzen)",
+    "A3": "Welche Berufsbezeichnung verwenden Sie für sich selbst?",
     "A4": "Wie alt sind Sie?",
     "A5": "Welches Geschlecht haben Sie?",
-    "A6": "Waren Sie bereits vor Gründung der Fakultät NXT an der Hochschule tätig?"
+    "A6": "Waren Sie bereits vor Gründung der Fakultät NXT an der Hochschule tätig?",
+    "A6.1": "Falls ja, seit wann?"
   },
   "groups": [
     "Professor:in",
     "Wissenschaftliche:r Mitarbeiter:in",
-    "Technische:r Mitarbeiter:in"
+    "Technische:r Mitarbeiter:in",
+    "Fakultätsmitarbeiter:in"
   ],
   "categories": [
     "Produktion & Digitalisierung",
@@ -36,7 +38,8 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     "Betriebswirtschaft & Management",
     "Mathematik & Data Science",
     "Soziale Arbeit",
-    "Werk150 & Labore"
+    "Werk150 & Labore",
+    "Sonstiges"
   ],
   "ages": [
     "unter 30",
@@ -55,34 +58,47 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     "Ja",
     "Nein"
   ],
-  "b_intro": "Mit fachlichem Austausch meinen wir ein inhaltliches Gespräch oder eine Nachricht zu Forschung, Lehre oder organisatorischen Selbstverwaltung direkt zwischen Ihnen und der Person, persönlich oder digital. Nicht gemeint sind reine Terminabsprachen und die bloße gemeinsame Teilnahme an Sitzungen, wenn Sie dort nicht direkt miteinander gesprochen haben.",
+  "b_intro": "Mit fachlichem Austausch meinen wir ein inhaltliches Gespräch oder eine Nachricht zu Forschung, Lehre oder der organisatorischen Selbstverwaltung direkt zwischen Ihnen und der Person, persönlich oder digital. Nicht gemeint sind reine Terminabsprachen und die bloße gemeinsame Teilnahme an Sitzungen, wenn Sie dort nicht direkt miteinander gesprochen haben.",
   "b_instruction": [
-    "1.  Gehen Sie die Liste einmal von oben nach unten durch.",
-    "2.  Spalte B1: Kreuzen Sie alle Personen an, mit denen Sie sich in den letzten 6 Monaten fachlich ausgetauscht haben.",
-    "3.  Spalten B2 bis B6: Füllen Sie diese nur für die angekreuzten Personen aus. Alle anderen Zeilen bleiben leer."
+    "1. Gehen Sie die Liste einmal von oben nach unten durch.",
+    "2. Spalte B1: Kreuzen Sie alle Personen an, mit denen Sie sich in den letzten 6 Monaten fachlich ausgetauscht haben.",
+    "3. Spalten B2 bis B6: Füllen Sie diese nur für die angekreuzten Personen aus. Alle anderen Zeilen bleiben leer."
   ],
   "b_explanations": {
-    "B2": "B2: Inhalt der Gespräche? Bitte Buchstaben eintragen",
-    "B3": "B3: Wie oft? Bitte Zahl eintragen",
-    "B4": "B4: Wie kommt der Austausch meistens zustande? Bitte Buchstaben eintragen",
-    "B5": "B5: Wie findet der Austausch überwiegend statt? Bitte Buchstaben eintragen"
+    "B2": "B2 · Worum geht es in den fachlichen Gesprächen? F = Forschung, L = Lehre, SV = organisatorische Selbstverwaltung (mehrere möglich).",
+    "B3": "B3 · Wie häufig finden die fachlichen Gespräche statt? 1 = seltener als monatlich bis 5 = (fast) täglich.",
+    "B4": "B4 · Wie kommt der fachliche Austausch meistens zustande? S = spontan, G = geplant, B = beides etwa gleich.",
+    "B5": "B5 · Wie findet der Austausch überwiegend statt? P = persönlich, D = digital, B = beides etwa gleich.",
+    "B6": "B6 · Kannten Sie die Person schon vor der Gründung der Fakultät NXT? Ja = persönlich bekannt (nicht nur vom Sehen oder Namen)."
   },
   "b2": [
     [
       "F",
-      "Forschung"
+      "F – Forschung"
     ],
     [
       "L",
-      "Lehre"
+      "L – Lehre"
     ],
     [
-      "S",
-      "organisatorische Selbstverwaltung"
+      "SV",
+      "SV – organisatorische Selbstverwaltung"
     ],
     [
-      "A",
-      "alles drei"
+      "F+L",
+      "F + L – Forschung und Lehre"
+    ],
+    [
+      "F+SV",
+      "F + SV – Forschung und Selbstverwaltung"
+    ],
+    [
+      "L+SV",
+      "L + SV – Lehre und Selbstverwaltung"
+    ],
+    [
+      "F+L+SV",
+      "F + L + SV – alle drei Bereiche"
     ]
   ],
   "b3": [
@@ -110,11 +126,11 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
   "b4": [
     [
       "S",
-      "spontan / zufällig"
+      "spontan / zufällig (z. B. Flur oder Kaffeeküche)"
     ],
     [
       "G",
-      "geplant"
+      "geplant (Termin oder Besprechung)"
     ],
     [
       "B",
@@ -128,26 +144,30 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "D",
-      "digital (Mail, Teams, Telefon)"
+      "digital (E-Mail, MS Teams, Telefon)"
     ],
     [
       "B",
       "beides etwa gleich"
     ]
   ],
-  "b6_question": "Kannte ich schon vor NXT",
+  "b6_question": "Kannten Sie die Person schon vor Gründung der Fakultät NXT?",
   "b_attitude": "Fachübergreifender Austausch ist für meine Arbeit wichtig.",
-  "c_intro": "Die Fakultät NXT verteilt sich auf mehrere Gebäude. Uns interessiert, welche Wege Sie im Alltag gehen und wo Sie anderen begegnen. Bitte nutzen Sie dazu den beiliegenden Lageplan; die Nummern im Fragebogen entsprechen den Nummern im Plan.",
+  "c_intro": "Die Fakultät NXT verteilt sich auf mehrere Gebäude. Uns interessiert, welche Wege Sie im Alltag gehen und wo Sie anderen begegnen. Bitte nutzen Sie dazu den Lageplan am Ende des Fragebogens; die Nummern im Fragebogen entsprechen den Nummern im Plan.",
   "questionsC": {
     "C1": "In welchem Gebäude liegt Ihr Büro? (siehe Lageplan)",
     "C2": "Welche der folgenden öffentlichen Räume nutzen Sie in Ihrem eigenen Gebäude?",
-    "C3": "An welchen Wochentagen sind Sie typischerweise vor Ort?",
-    "C4": "An welchen Wochentagen arbeiten Sie typischerweise remote?",
-    "C5": "Wo kommen Sie auf dem Campus meistens an? (Lageplan Nr. 10-16)",
-    "C6": "In welchen NXT-Räumlichkeiten halten Sie sich in einer typischen Woche auf?",
+    "C3": "An welchen Wochentagen während des Semesters sind Sie typischerweise vor Ort?",
+    "C4": "An welchen Wochentagen während des Semesters arbeiten Sie typischerweise remote?",
+    "C5": "Wo beginnt Ihr Weg auf dem Campus normalerweise? (siehe Lageplan, Nr. 10–16)",
+    "C6": "In welchen NXT-Räumen halten Sie sich in einer typischen Woche auf? (siehe Lageplan, Nr. 1–5)",
     "C7": "Welche der folgenden Orte auf dem Campus suchen Sie in einer typischen Woche auf?",
     "C8": "Wo ergeben sich für Sie am häufigsten fachliche Gespräche? (bitte höchstens 3 ankreuzen)",
-    "C9": "Wie sehr treffen die folgenden Aussagen auf Sie zu?"
+    "C9": "Wie wirkt sich die Verteilung der Fakultät auf mehrere Gebäude auf Ihren fachlichen Austausch aus?",
+    "C10": "Wie oft begegnen Sie auf Ihren täglichen Wegen Kolleg:innen anderer Fachgebiete?",
+    "C11": "Wie gut eignen sich die Räumlichkeiten der Fakultät für den Austausch mit anderen Fachgebieten?",
+    "C12": "Wie bewerten Sie die Anzahl der Orte für spontane Begegnungen an der Fakultät?",
+    "C13": "Wie bewerten Sie den Umfang Ihres fachübergreifenden Austauschs an der Fakultät NXT?"
   },
   "buildings": [
     "21",
@@ -158,15 +178,42 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     "anderes Gebäude"
   ],
   "arrivals": [
-    "10 Großer Parkplatz (Südwest)",
-    "11 Parkplatz Mitte",
-    "12 Parkplatz Ost",
-    "13 Fahrradparkplatz",
-    "14 Bushaltestelle Ost",
-    "15 Bushaltestelle Südost",
-    "16 Bushaltestelle Süd",
-    "direkt an meinem Gebäude",
-    "anderer Ort"
+    [
+      "10 Großer Parkplatz (Südwest)",
+      "10 Großer Parkplatz (Südwest)"
+    ],
+    [
+      "11 Parkplatz Mitte",
+      "11 Parkplatz Mitte (bei Geb. 12)"
+    ],
+    [
+      "12 Parkplatz Ost",
+      "12 Parkplatz Ost (bei Geb. 13)"
+    ],
+    [
+      "13 Fahrradparkplatz",
+      "13 Fahrradparkplatz"
+    ],
+    [
+      "14 Bushaltestelle Ost",
+      "14 Bushaltestelle Ost"
+    ],
+    [
+      "15 Bushaltestelle Südost",
+      "15 Bushaltestelle Südost"
+    ],
+    [
+      "16 Bushaltestelle Süd",
+      "16 Bushaltestelle Süd"
+    ],
+    [
+      "direkt an meinem Gebäude",
+      "direkt an meinem Gebäude"
+    ],
+    [
+      "anderer Ort",
+      "sonstiger Ort"
+    ]
   ],
   "weekdays": [
     [
@@ -197,11 +244,11 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Drucker",
-      "Drucker / Kopierer"
+      "Drucker- / Kopierraum"
     ],
     [
       "Sekretariat",
-      "Sekretariat / Postfächer"
+      "Sekretariat / Poststelle"
     ],
     [
       "Meeting",
@@ -231,7 +278,11 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Sonstige",
-      "Sonstige Gebäude/Raum:"
+      "Sonstiger Ort 1"
+    ],
+    [
+      "Sonstige2",
+      "Sonstiger Ort 2"
     ]
   ],
   "encountersC8": [
@@ -241,7 +292,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Buero",
-      "Im eigenen Büro"
+      "Eigenes Büro"
     ],
     [
       "Mensa",
@@ -269,11 +320,11 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Drucker",
-      "Drucker / Kopierer"
+      "Drucker- / Kopierraum"
     ],
     [
       "Sekretariat",
-      "Sekretariat / Postfächer"
+      "Sekretariat / Poststelle"
     ],
     [
       "Meeting",
@@ -281,23 +332,16 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Digital",
-      "Digital (Telefon, MS Teams, E-Mail, etc.)"
+      "Digital (E-Mail, MS Teams, Telefon)"
     ],
     [
       "Wege",
-      "Auf den Wegen zwischen den Gebäuden"
+      "Wege zwischen den Gebäuden"
     ],
     [
       "Sonstige",
-      "Sonstige Gebäude/Raum:"
+      "Sonstiger Ort"
     ]
-  ],
-  "statementsC9": [
-    "Die Verteilung der Fakultät auf mehrere Gebäude erschwert den fachlichen Austausch.",
-    "Auf meinen täglichen Wegen begegne ich Kolleg:innen anderer Fachgebiete.",
-    "Die Räumlichkeiten erleichtern den Austausch mit anderen Fachgebieten.",
-    "Ich würde mir mehr Orte für spontane Begegnungen wünschen.",
-    "Ich hätte gerne mehr fachübergreifenden Austausch mit Kolleg:innen der Fakultät NXT."
   ],
   "likert": [
     "trifft gar nicht zu",
@@ -328,6 +372,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Freitext/Nummer"
     ],
     [
+      "Fragebogen_Version",
+      "Gesamt_Personen",
+      "Version der Interviewinstrumente",
+      "PDF final 2026/27; alte V7-Antworten bleiben im Rohdatenexport"
+    ],
+    [
       "Kuerzel",
       "Gesamt_Personen",
       "Projektteam",
@@ -349,19 +399,19 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "A1_Gruppe",
       "Gesamt_Personen",
       "A1",
-      "1 = Professor:in, 2 = Wiss. Mitarbeiter:in, 3 = Techn. Mitarbeiter:in"
+      "1 = Professor:in; 2 = Wissenschaftliche:r Mitarbeiter:in; 3 = Technische:r Mitarbeiter:in; 4 = Fakultätsmitarbeiter:in"
     ],
     [
       "A2_Kategorie",
       "Gesamt_Personen",
       "A2",
-      "1 = Produktion & Digitalisierung, 2 = Logistik & Operations, 3 = Betriebswirtschaft & Management, 4 = Mathematik & Data Science, 5 = Soziale Arbeit, 6 = Werk150 & Labore"
+      "1 = Produktion & Digitalisierung; 2 = Logistik & Operations; 3 = Betriebswirtschaft & Management; 4 = Mathematik & Data Science; 5 = Soziale Arbeit; 6 = Werk150 & Labore; 7 = Sonstiges"
     ],
     [
       "A3_Selbstbezeichnung",
       "Gesamt_Personen",
       "A3",
-      "Freitext"
+      "Berufsbezeichnung (Freitext)"
     ],
     [
       "A4_Alter",
@@ -384,14 +434,14 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "A6_seit",
       "Gesamt_Personen",
-      "A6",
-      "Freitext (seit wann)"
+      "A6.1",
+      "Seit wann an der Hochschule (wenn A6 = Ja)"
     ],
     [
-      "B_Aussage_Austausch_wichtig",
+      "B7_Wichtigkeit",
       "Gesamt_Personen",
-      "B6 (Aussage unter dem Netzwerkbogen)",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "B7 Wichtigkeit des fachübergreifenden Austauschs",
+      "1 = Überhaupt nicht wichtig; 2 = Wenig wichtig; 3 = Teils / teils; 4 = Wichtig; 5 = Sehr wichtig"
     ],
     [
       "C1_Gebaeude",
@@ -420,7 +470,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C2_Drucker",
       "Gesamt_Personen",
-      "C2 Drucker / Kopierer",
+      "C2 Drucker- / Kopierraum",
       "1 = ja, 0 = nein"
     ],
     [
@@ -432,7 +482,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C2_Sekretariat",
       "Gesamt_Personen",
-      "C2 Sekretariat / Postfächer",
+      "C2 Sekretariat / Poststelle",
       "1 = ja, 0 = nein"
     ],
     [
@@ -636,13 +686,25 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C7_Sonstige",
       "Gesamt_Personen",
-      "C7 Sonstige Gebäude/Raum:",
+      "C7 Sonstiger Ort 1",
       "1 = ja, 0 = nein"
     ],
     [
       "C7_Sonstige_Text",
       "Gesamt_Personen",
-      "C7 Sonstige",
+      "C7 Sonstiger Ort 1",
+      "Freitext"
+    ],
+    [
+      "C7_Sonstige2",
+      "Gesamt_Personen",
+      "C7 Sonstiger Ort 2",
+      "1 = ja, 0 = nein"
+    ],
+    [
+      "C7_Sonstige2_Text",
+      "Gesamt_Personen",
+      "C7 Sonstiger Ort 2",
       "Freitext"
     ],
     [
@@ -654,7 +716,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C8_Buero",
       "Gesamt_Personen",
-      "C8 Im eigenen Büro",
+      "C8 Eigenes Büro",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
@@ -696,13 +758,13 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C8_Drucker",
       "Gesamt_Personen",
-      "C8 Drucker / Kopierer",
+      "C8 Drucker- / Kopierraum",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
       "C8_Sekretariat",
       "Gesamt_Personen",
-      "C8 Sekretariat / Postfächer",
+      "C8 Sekretariat / Poststelle",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
@@ -714,25 +776,25 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C8_Digital",
       "Gesamt_Personen",
-      "C8 Digital (Telefon, MS Teams, E-Mail, etc.)",
+      "C8 Digital (E-Mail, MS Teams, Telefon)",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
       "C8_Wege",
       "Gesamt_Personen",
-      "C8 Auf den Wegen zwischen den Gebäuden",
+      "C8 Wege zwischen den Gebäuden",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
       "C8_Sonstige",
       "Gesamt_Personen",
-      "C8 Sonstige Gebäude/Raum:",
+      "C8 Sonstiger Ort",
       "1 = angekreuzt, 0 = nicht angekreuzt"
     ],
     [
       "C8_Sonstige_Text",
       "Gesamt_Personen",
-      "C8 Sonstige",
+      "C8 Sonstiger Ort",
       "Freitext"
     ],
     [
@@ -742,34 +804,34 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Anzahl Kreuze (sollte ≤ 3 sein)"
     ],
     [
-      "C9_1",
+      "C9",
       "Gesamt_Personen",
-      "C9 Die Verteilung der Fakultät auf mehrere Gebäude erschwert den fachlichen Austausch.",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "C9 Wie wirkt sich die Verteilung der Fakultät auf mehrere Gebäude auf Ihren fachlichen Austausch aus?",
+      "1 = Stark erschwerend; 2 = Eher erschwerend; 3 = Kein Einfluss; 4 = Eher erleichternd; 5 = Stark erleichternd"
     ],
     [
-      "C9_2",
+      "C10",
       "Gesamt_Personen",
-      "C9 Auf meinen täglichen Wegen begegne ich Kolleg:innen anderer Fachgebiete.",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "C10 Wie oft begegnen Sie auf Ihren täglichen Wegen Kolleg:innen anderer Fachgebiete?",
+      "1 = Nie; 2 = Selten; 3 = Manchmal; 4 = Oft; 5 = Sehr oft"
     ],
     [
-      "C9_3",
+      "C11",
       "Gesamt_Personen",
-      "C9 Die Räumlichkeiten erleichtern den Austausch mit anderen Fachgebieten.",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "C11 Wie gut eignen sich die Räumlichkeiten der Fakultät für den Austausch mit anderen Fachgebieten?",
+      "1 = Sehr schlecht; 2 = Eher schlecht; 3 = Teils / teils; 4 = Eher gut; 5 = Sehr gut"
     ],
     [
-      "C9_4",
+      "C12",
       "Gesamt_Personen",
-      "C9 Ich würde mir mehr Orte für spontane Begegnungen wünschen.",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "C12 Wie bewerten Sie die Anzahl der Orte für spontane Begegnungen an der Fakultät?",
+      "1 = Viel zu wenige; 2 = Eher zu wenige; 3 = Genau richtig; 4 = Eher zu viele; 5 = Viel zu viele"
     ],
     [
-      "C9_5",
+      "C13",
       "Gesamt_Personen",
-      "C9 Ich hätte gerne mehr fachübergreifenden Austausch mit Kolleg:innen der Fakultät NXT.",
-      "1 = trifft gar nicht zu … 5 = trifft voll zu"
+      "C13 Wie bewerten Sie den Umfang Ihres fachübergreifenden Austauschs an der Fakultät NXT?",
+      "1 = Viel zu wenig; 2 = Eher zu wenig; 3 = Genau richtig; 4 = Eher zu viel; 5 = Viel zu viel"
     ],
     [
       "Ego_ID",
@@ -798,8 +860,26 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "B2_Inhalt",
       "Gesamt_Netzwerk",
-      "B2 Inhalt der Gespräche",
-      "1 = F Forschung, 2 = L Lehre, 3 = S organisatorische Selbstverwaltung, 4 = A alles drei"
+      "B2 Worum geht es in den fachlichen Gesprächen?",
+      "F = Forschung; L = Lehre; SV = Selbstverwaltung; Kombinationen durch + getrennt, z. B. F+L+SV"
+    ],
+    [
+      "B2_F",
+      "Gesamt_Netzwerk",
+      "B2 Forschung",
+      "1 = ausgewählt, 0 = nicht ausgewählt"
+    ],
+    [
+      "B2_L",
+      "Gesamt_Netzwerk",
+      "B2 Lehre",
+      "1 = ausgewählt, 0 = nicht ausgewählt"
+    ],
+    [
+      "B2_SV",
+      "Gesamt_Netzwerk",
+      "B2 organisatorische Selbstverwaltung",
+      "1 = ausgewählt, 0 = nicht ausgewählt"
     ],
     [
       "B3_Haeufigkeit",
@@ -810,20 +890,65 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "B4_Zustandekommen",
       "Gesamt_Netzwerk",
-      "B4 Wie kommt der Austausch zustande?",
-      "1 = S spontan, 2 = G geplant, 3 = B beides"
+      "B4 Wie kommt der Austausch meistens zustande?",
+      "S = spontan / zufällig; G = geplant; B = beides etwa gleich"
     ],
     [
       "B5_Medium",
       "Gesamt_Netzwerk",
-      "B5 Medium",
-      "1 = P persönlich, 2 = D digital, 3 = B beides"
+      "B5 Wie findet der Austausch überwiegend statt?",
+      "P = persönlich vor Ort; D = digital; B = beides etwa gleich"
     ],
     [
       "B6_vor_NXT_bekannt",
       "Gesamt_Netzwerk",
-      "B6 Kannte ich schon vor NXT",
-      "1 = ja, 0 = nein (nur bei B1 = 1), leer = nicht gefragt"
+      "B6 Bereits vor Fakultät NXT persönlich bekannt?",
+      "1 = ja, persönlich bekannt (nicht nur vom Sehen oder Namen); 0 = nein; leer = nicht gefragt"
     ]
-  ]
+  ],
+  "b7_question": "Wie wichtig ist Ihnen der fachübergreifende Austausch für Ihre Arbeit / Forschung?",
+  "b7Scale": [
+    "Überhaupt nicht wichtig",
+    "Wenig wichtig",
+    "Teils / teils",
+    "Wichtig",
+    "Sehr wichtig"
+  ],
+  "scalesC": {
+    "C9": [
+      "Stark erschwerend",
+      "Eher erschwerend",
+      "Kein Einfluss",
+      "Eher erleichternd",
+      "Stark erleichternd"
+    ],
+    "C10": [
+      "Nie",
+      "Selten",
+      "Manchmal",
+      "Oft",
+      "Sehr oft"
+    ],
+    "C11": [
+      "Sehr schlecht",
+      "Eher schlecht",
+      "Teils / teils",
+      "Eher gut",
+      "Sehr gut"
+    ],
+    "C12": [
+      "Viel zu wenige",
+      "Eher zu wenige",
+      "Genau richtig",
+      "Eher zu viele",
+      "Viel zu viele"
+    ],
+    "C13": [
+      "Viel zu wenig",
+      "Eher zu wenig",
+      "Genau richtig",
+      "Eher zu viel",
+      "Viel zu viel"
+    ]
+  }
 });
