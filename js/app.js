@@ -6,7 +6,7 @@
   const root = document.getElementById('app');
   const state = {
     db: null, user: null, member: null, people: [], interviews: [], edges: [], locations: [],
-    route: 'dashboard', networkLayer:'social', query: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
+    route: 'dashboard', networkLayer:'social', query: '', interviewQuery: '', filter: 'all', peerQuery:'', peerOnly:false, form: null, step: 0, busy: false,
     channel: null, poll: null, modal: '', draftDirty: false, settingsTab:'interviews',
     network: {controlsOpen:true,layout:'orbit3d',metric:'degree',limit:39,labels:true,hideIsolates:false,onlyInterviewed:false,sizeMode:'degree',depth:72,topic:'all',studioTab:'graphs',multipleEdges:true,showLoops:false,categoryField:'building',enabledCategories:null,componentMode:'weak',componentMin:1,recalculateComponents:true,spread:1,nodeMultiplier:1,canvasHeight:500,showArrows:true,focusId:'',preview:null,previewName:''},resetAudit:[],settingsSearch:'',resetTarget:null
   };
@@ -280,6 +280,7 @@
     window.NXTNetworkViz?.cleanup?.();
     window.NXTCampus?.cleanup?.();
     root.innerHTML=shell((pages[state.route]||renderDashboard)());
+    if(state.route==='interviews')refreshInterviewTable();
     if(state.route==='settings'&&state.settingsTab==='team'&&state.member?.role==='admin')window.NXTTeamAccess?.mount?.(qs('#nxt-team-access'),{db:state.db,currentUserId:state.user.id});
     if(state.route==='network'){
       if(state.networkLayer==='geographic'){
@@ -317,10 +318,32 @@
   function renderPeople(){
     return pageHead('Personenverzeichnis','Alle Personen im \u00dcberblick','Alle Mitarbeiterinnen und Mitarbeiter sowie ihre Interview- und Standortdaten.',`<button class="btn btn-light" data-action="import-people">${icon('upload')} Liste importieren</button><button class="btn btn-primary" data-action="add-person">${icon('plus')} Neue Person</button>`)+`<div class="panel"><div class="toolbar"><div class="search-wrap">${icon('search')}<input id="people-search" class="search-input" type="search" placeholder="Person oder Geb\u00e4ude suchen ..." value="${esc(state.query)}" aria-label="Personen suchen"></div><select id="people-filter" class="filter-select" aria-label="Interviewstatus filtern"><option value="all" ${state.filter==='all'?'selected':''}>Alle Status</option><option value="planned" ${state.filter==='planned'?'selected':''}>Offen</option><option value="in_progress" ${state.filter==='in_progress'?'selected':''}>In Bearbeitung</option><option value="completed" ${state.filter==='completed'?'selected':''}>Durchgeführt</option><option value="declined" ${state.filter==='declined'?'selected':''}>Abgelehnt</option></select><span class="muted small" id="people-count">${filteredPeople().length} Personen</span></div><div id="people-list">${renderPeopleTable(filteredPeople())}</div></div>`;
   }
+  // Local, case- and umlaut-insensitive search over the existing interview roster.
+  function interviewSearchMatches(text,query){
+    const normalize=value=>String(value??'').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de');
+    const keywords=normalize(query).trim().split(/\s+/).filter(Boolean);
+    return keywords.every(word=>normalize(text).includes(word));
+  }
+  function refreshInterviewTable(){
+    const rows=root.querySelectorAll('#interview-list .data-table tbody tr');
+    let shown=0;
+    for(const row of rows){
+      const nameAndCode=row.querySelector('.person-cell')?.textContent||'';
+      const match=interviewSearchMatches(nameAndCode,state.interviewQuery);
+      row.hidden=!match;
+      if(match)shown++;
+    }
+    const count=qs('#interview-count');
+    if(count)count.textContent=shown+' von '+state.people.length+' Personen';
+    const noMatch=qs('#interview-no-match');
+    if(noMatch)noMatch.hidden=shown!==0||state.people.length===0;
+  }
+
   function renderInterviews(){
     const records=state.people.map(p=>({p,i:state.interviews.find(i=>i.person_id===p.id)}))
       .sort((a,b)=>({'in_progress':0,'planned':1,'completed':2,'declined':3}[a.i?.status||'planned'])-({'in_progress':0,'planned':1,'completed':2,'declined':3}[b.i?.status||'planned']));
-    return pageHead('Erhebung','Interview\u00fcbersicht','Starte neue Gespr\u00e4che, setze Entw\u00fcrfe fort und pr\u00fcfe abgeschlossene Datens\u00e4tze.',`<button class="btn btn-primary" data-action="navigate" data-route="people">${icon('plus')} Interview starten</button>`)+`<div class="panel">${records.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Bearbeitung</th><th>Letzte Aktualisierung</th><th>Status</th><th>Aktion</th></tr></thead><tbody>${records.map(({p,i})=>`<tr><td><div class="person-cell"><span class="person-avatar">${esc(initials(p.full_name))}</span><div><strong>${esc(p.full_name)}</strong><small>${esc(p.code)}</small></div></div></td><td>${esc(i?.interviewer_name||'\u2014')}</td><td>${fmtTime(i?.updated_at)}</td><td>${badge(i?.status)}</td><td><button class="btn btn-light btn-sm" data-action="open-interview" data-person="${esc(p.id)}">${i?'Fortsetzen':'Beginnen'} ${icon('chevron',14)}</button></td></tr>`).join('')}</tbody></table></div>`:empty('Personenliste noch leer','Zuerst m\u00fcssen die Interviewpersonen angelegt oder importiert werden.','clipboard','<button class="btn btn-primary" data-action="navigate" data-route="people">Zum Personenverzeichnis</button>')}</div>`;
+    return pageHead('Erhebung','Interview\u00fcbersicht','Starte neue Gespr\u00e4che, setze Entw\u00fcrfe fort und pr\u00fcfe abgeschlossene Datens\u00e4tze.',`<button class="btn btn-primary" data-action="navigate" data-route="people">${icon('plus')} Interview starten</button>`)+`<div class="panel"><div class="toolbar"><div class="search-wrap">${icon('search')}<input id="interview-search" class="search-input" type="search" placeholder="Name oder Personen-ID suchen ..." value="${esc(state.interviewQuery)}" aria-label="Interviews nach Name oder Personen-ID durchsuchen" aria-controls="interview-list" autocomplete="off" spellcheck="false"></div><span class="muted small" id="interview-count" aria-live="polite">${records.length} von ${state.people.length} Personen</span></div><div id="interview-list">${records.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Bearbeitung</th><th>Letzte Aktualisierung</th><th>Status</th><th>Aktion</th></tr></thead><tbody>${records.map(({p,i})=>`<tr><td><div class="person-cell"><span class="person-avatar">${esc(initials(p.full_name))}</span><div><strong>${esc(p.full_name)}</strong><small>${esc(p.code)}</small></div></div></td><td>${esc(i?.interviewer_name||'\u2014')}</td><td>${fmtTime(i?.updated_at)}</td><td>${badge(i?.status)}</td><td><button class="btn btn-light btn-sm" data-action="open-interview" data-person="${esc(p.id)}">${i?'Fortsetzen':'Beginnen'} ${icon('chevron',14)}</button></td></tr>`).join('')}</tbody></table></div>`:empty('Personenliste noch leer','Zuerst m\u00fcssen die Interviewpersonen angelegt oder importiert werden.','clipboard','<button class="btn btn-primary" data-action="navigate" data-route="people">Zum Personenverzeichnis</button>')}</div><div id="interview-no-match" class="empty-state" role="status" hidden><div class="empty-icon">${icon('search',25)}</div><h3>Keine Person gefunden</h3><p>Bitte einen anderen Namen oder eine Personen-ID eingeben.</p></div></div>`;
   }
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
   const selectField = (label,field,items,value,extra='') => `<div class="field"><label>${label}</label><select data-field="${field}" ${extra}>${items.map(([key,name])=>option(key,name,value)).join('')}</select></div>`;
@@ -633,6 +656,7 @@
   }
   function handleInput(e){
     const el=e.target;
+    if(el.id==='interview-search'){state.interviewQuery=el.value;refreshInterviewTable();return;}
     if(el.id==='people-search'){state.query=el.value;refreshPeopleTable();return;}
     if(el.id==='people-filter'){state.filter=el.value;refreshPeopleTable();return;}
     if(el.id==='settings-search'){state.settingsSearch=el.value;const list=qs('#settings-people-list');if(list)list.innerHTML=renderSettingsRows();return;}
