@@ -80,6 +80,45 @@ assert.equal(matches('Müller P11','muller'),true,'Search ignores umlaut marks')
 assert.equal(matches('Doris Elfers P44','P41'),false,'Search excludes nonmatches');
 assert.equal(matches('Agnieszka Grzesiak P41',''),true,'Empty query shows all people');
 
-assert.ok(app.includes("Etage / Flur (UG, UG 2, EG, OG 1, OG 2, …)"),'Floor field format is visible next to the label');
-assert.ok(app.includes("'z. B. EG oder OG 1'"),'All floor inputs show a consistent example placeholder');
+// C2: boolean checkbox and repeatable room locations; preserve old ja/nein + floor values.
+for(const [key] of Q.spacesC2){
+ assert.ok(Q.codebook.some(row=>row[0]==='C2_'+key+'_Standorte'),'Missing new C2 export key: '+key);
+}
+for(const token of ['data-c2-toggle=','data-c2-field="building"','data-c2-field="floor"',
+ 'data-action="c2-add"','data-action="c2-remove"','const placesC2=()']){
+ assert.ok(app.includes(token),'C2 dynamic field missing '+token);
+}
+assert.ok(!app.includes("places(Q.spacesC2,'C2',true)"),'Previous C2 yes/no dropdown must be replaced');
+assert.ok(app.includes("Häkchen = Ja · leer = Nein"),'Checkbox states must be unambiguous');
+assert.ok(app.includes("z. B. EG oder OG 1"),'Etage / Flur example placeholder');
+assert.ok(app.includes("c2SetOfficeBuilding(state.form,val)"),'Office building updates inherited locations');
+assert.ok(app.includes("function c2SyncOldFloor(form,key)"),'First floor stays backward compatible');
+assert.ok(app.includes("makeSheet(wb,'C2_Standorte'"),'Export repeated C2 locations as separate rows');
+assert.ok(app.includes("answers[base+'_Standorte']=yes?rows.map("),'Store all repeated rooms in existing JSONB answers');
+assert.ok(app.includes("Bei C2 bitte für jeden ausgewählten Standort ein Gebäude angeben."),'Completed interview requires locations');
+const c2Start=app.indexOf("const c2IsChecked="),c2End=app.indexOf("const qYesNo =",c2Start);
+assert.ok(c2Start>=0&&c2End>c2Start,'C2 data compatibility helpers exist');
+const c2World={Q,form:{
+ building:"16",
+ answers:{C1_Gebaeude:"21",C2_Kueche:"ja",C2_Kueche_Etage:"OG1",
+   C2_Drucker:"nein",C2_Meeting:true,C2_Meeting_Standorte:[
+    {building:"5",floor:"EG",followOffice:false},{building:"21",floor:"OG 2",followOffice:true}
+   ]}
+}};
+vm.createContext(c2World);
+vm.runInContext(app.slice(c2Start,c2End),c2World);
+vm.runInContext("c2EnsureAnswers(form)",c2World);
+assert.equal(c2World.form.answers.C2_Kueche,true,'Legacy ja becomes checked');
+assert.equal(c2World.form.answers.C2_Drucker,false,'Legacy nein becomes unchecked');
+assert.equal(c2World.form.answers.C2_Kueche_Standorte[0].floor,"OG1",'Legacy floor is retained');
+assert.equal(c2World.form.answers.C2_Kueche_Standorte[0].building,"21",'Legacy row inherits office building');
+assert.equal(c2World.form.answers.C2_Meeting_Standorte.length,2,'Multiple locations are retained');
+vm.runInContext('c2SetOfficeBuilding(form,"D (Alice-Salomon-Haus)")',c2World);
+assert.equal(c2World.form.answers.C2_Kueche_Standorte[0].building,"D (Alice-Salomon-Haus)",
+ 'Auto-selected room building follows new C1 choice');
+assert.equal(c2World.form.answers.C2_Meeting_Standorte[0].building,"5",
+ 'Manually chosen building must not be overwritten');
+assert.equal(c2World.form.answers.C2_Meeting_Standorte[1].building,"D (Alice-Salomon-Haus)",
+ 'Only office-inherited entries should follow C1');
+
 console.log('PASS: PDF questionnaire A1–A6.1, B2 combinations, B7, C9–C13, export, cohort 44, network codes.');
