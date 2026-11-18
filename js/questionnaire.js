@@ -468,6 +468,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Freitext"
     ],
     [
+      "C2_Kueche_Standorte",
+      "Gesamt_Personen",
+      "C2 Kaffee- / Teeküche – alle Standorte",
+      "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
+    ],
+    [
       "C2_Drucker",
       "Gesamt_Personen",
       "C2 Drucker- / Kopierraum",
@@ -478,6 +484,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Gesamt_Personen",
       "C2 Drucker / Kopierer – Etage/Flur",
       "Freitext"
+    ],
+    [
+      "C2_Drucker_Standorte",
+      "Gesamt_Personen",
+      "C2 Drucker- / Kopierraum – alle Standorte",
+      "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
     ],
     [
       "C2_Sekretariat",
@@ -492,6 +504,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Freitext"
     ],
     [
+      "C2_Sekretariat_Standorte",
+      "Gesamt_Personen",
+      "C2 Sekretariat / Poststelle – alle Standorte",
+      "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
+    ],
+    [
       "C2_Meeting",
       "Gesamt_Personen",
       "C2 Meetingräume",
@@ -504,6 +522,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Freitext"
     ],
     [
+      "C2_Meeting_Standorte",
+      "Gesamt_Personen",
+      "C2 Meetingräume – alle Standorte",
+      "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
+    ],
+    [
       "C2_Sanitaer",
       "Gesamt_Personen",
       "C2 Sanitäranlage",
@@ -514,6 +538,12 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Gesamt_Personen",
       "C2 Sanitäranlage – Etage/Flur",
       "Freitext"
+    ],
+    [
+      "C2_Sanitaer_Standorte",
+      "Gesamt_Personen",
+      "C2 Sanitäranlage – alle Standorte",
+      "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
     ],
     [
       "C3_Mo",
