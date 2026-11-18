@@ -74,31 +74,31 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
   "b2": [
     [
       "F",
-      "F – Forschung"
+      "Forschung"
     ],
     [
       "L",
-      "L – Lehre"
+      "Lehre"
     ],
     [
       "SV",
-      "SV – organisatorische Selbstverwaltung"
+      "organisatorische Selbstverwaltung"
     ],
     [
       "F+L",
-      "F + L – Forschung und Lehre"
+      "Forschung + Lehre"
     ],
     [
       "F+SV",
-      "F + SV – Forschung und Selbstverwaltung"
+      "Forschung + Selbstverwaltung"
     ],
     [
       "L+SV",
-      "L + SV – Lehre und Selbstverwaltung"
+      "Lehre + Selbstverwaltung"
     ],
     [
       "F+L+SV",
-      "F + L + SV – alle drei Bereiche"
+      "Forschung + Lehre + Selbstverwaltung"
     ]
   ],
   "b3": [
