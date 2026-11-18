@@ -11,6 +11,7 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 - Interview overview with instant case-insensitive name and person-ID search (local filter, no extra database requests)
 - Interview steps A (person group), B (directed professional edges), C (locations), D (review)
 - C2 rooms: checked = used; unselected = no; repeatable building/floor entries with office-building default and individual override
+- C7 campus places: checked = yes, unchecked = no; two 'Sonstiger Ort' rows retain their free-text fields when selected
 - Central Postgres database with Supabase Auth and strict RLS membership checks
 - Atomic interview save and optimistic-lock version to prevent concurrent overwriting
 - Cross-device status sync with realtime listener (if publication enabled) and 30s polling
