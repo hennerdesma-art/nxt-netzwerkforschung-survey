@@ -1,4 +1,4 @@
-/* NXT research instrument, derived from supplied questionnaire V7. No participant names. */
+/* NXT research instrument, aligned with final PDF dated 18 November 2026. No participant names. */
 window.NXT_QUESTIONNAIRE = Object.freeze({
   "version": "PDF final · Wintersemester 2026/27",
   "title": "Befragung: Räume und fachlicher Austausch an der Fakultät NXT",
