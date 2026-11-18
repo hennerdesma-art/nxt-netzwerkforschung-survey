@@ -61,4 +61,23 @@ assert.ok(network.includes("const topics={F:0,L:0,SV:0,unknown:0}"),'Network tex
 assert.ok(network.includes('normalizeTopics(edge.topics)'),'Multi-topic edges counted');
 assert.ok(campus.includes("SV:'Selbstverwaltung'"),'Campus filter matches updated SV code');
 assert.ok(html.includes('questionnaire.js'),'The final questionnaire loads through index.html');
+// Interview overview: search is local, live, name-based and independent of the people-directory search.
+assert.ok(app.includes('id="interview-search"'),'Interview overview needs a visible search field');
+assert.ok(app.includes('aria-label="Interviews nach Name oder Personen-ID durchsuchen"'),'Search must be accessible');
+assert.ok(app.includes("if(el.id==='interview-search'){state.interviewQuery=el.value;refreshInterviewTable();return;}"),'Typing must filter the table without rerendering the input');
+assert.ok(app.includes("if(state.route==='interviews')refreshInterviewTable();"),'Search must be restored after data refresh');
+const searchBegin=app.indexOf('function interviewSearchMatches(text,query){');
+const searchEnd=app.indexOf('function refreshInterviewTable(){',searchBegin);
+assert.ok(searchBegin>0&&searchEnd>searchBegin,'Interview filtering helper is present');
+const searchContext={};
+vm.createContext(searchContext);
+vm.runInContext(app.slice(searchBegin,searchEnd),searchContext);
+const matches=searchContext.interviewSearchMatches;
+assert.equal(matches('Johanna Zieger P40','zieger'),true,'Search matches surname');
+assert.equal(matches('Frauke Greiner P42','P42'),true,'Search matches person ID');
+assert.equal(matches('Anja Freifrau von Richthofen P43','richthofen ANJA'),true,'Search matches multiple keywords in any order');
+assert.equal(matches('Müller P11','muller'),true,'Search ignores umlaut marks');
+assert.equal(matches('Doris Elfers P44','P41'),false,'Search excludes nonmatches');
+assert.equal(matches('Agnieszka Grzesiak P41',''),true,'Empty query shows all people');
+
 console.log('PASS: PDF questionnaire A1–A6.1, B2 combinations, B7, C9–C13, export, cohort 44, network codes.');
