@@ -332,12 +332,13 @@
       const nameAndCode=row.querySelector('.person-cell')?.textContent||'';
       const match=interviewSearchMatches(nameAndCode,state.interviewQuery);
       row.hidden=!match;
+      row.style.display=match?'':'none';
       if(match)shown++;
     }
     const count=qs('#interview-count');
     if(count)count.textContent=shown+' von '+state.people.length+' Personen';
     const noMatch=qs('#interview-no-match');
-    if(noMatch)noMatch.hidden=shown!==0||state.people.length===0;
+    if(noMatch){const empty=shown===0&&state.people.length>0;noMatch.hidden=!empty;noMatch.style.display=empty?'flex':'none';}
   }
 
   function renderInterviews(){
