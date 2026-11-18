@@ -64,12 +64,12 @@ with sync_playwright() as p:
     page.wait_for_selector('#peer-results')
     assert page.locator('.q-peer').count()==8
     page.locator('[data-action="toggle-peer"]').first.click()
-    page.locator('[data-edge-field="topics_single"]').select_option('F')
+    page.locator('[data-edge-field="topics_combo"]').select_option('F+SV')
     page.locator('[data-edge-field="frequency"]').select_option('4')
     page.locator('[data-edge-field="exchange_mode"]').select_option('S')
     page.locator('[data-edge-field="exchange_medium"]').select_option('P')
     page.locator('[data-edge-field="known_before_nxt"]').select_option('false')
-    page.locator('[data-answer="B_Aussage_Austausch_wichtig"]').select_option(label='trifft voll zu')
+    page.locator('[data-answer="B7_Wichtigkeit"]').select_option(label='Sehr wichtig')
     page.locator('[data-action="next-step"]').click()
     page.wait_for_selector('[data-answer="C1_Gebaeude"]')
     page.screenshot(path='/mnt/data/nxt-v7-interview-desktop.png',full_page=True)
@@ -88,7 +88,7 @@ with sync_playwright() as p:
     page.locator('[data-answer="C8_Kueche"]').check()
     page.locator('[data-answer="C8_Buero"]').click()
     assert not page.locator('[data-answer="C8_Buero"]').is_checked(), 'C8 must reject fourth choice'
-    page.locator('[data-answer="C9_1"]').select_option(label='trifft eher zu')
+    page.locator('[data-answer="C9"]').select_option(label='Eher erschwerend')
     page.locator('[data-action="next-step"]').click()
     page.locator('[data-action="save-completed"]').click()
     page.wait_for_selector('.stat-grid',timeout=10000) if page.locator('.stat-grid').count() else page.wait_for_selector('[data-route="export"]')
@@ -122,5 +122,5 @@ with sync_playwright() as p:
 
     assert page.locator('.stat-grid').is_visible()
     assert not errors, errors
-    print('SUCCESS: V7 consent, A1-A6, B1-B6, C1-C9, C8 max-3, save, 10-sheet coded export, responsive, no JS errors.')
+    print('SUCCESS: PDF-final consent, A1-A6, B1-B6, C1-C9, C8 max-3, save, 10-sheet coded export, responsive, no JS errors.')
     browser.close()
