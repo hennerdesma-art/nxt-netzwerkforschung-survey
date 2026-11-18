@@ -1,6 +1,6 @@
 # NXT | Netzwerkforschung - Interviewplattform
 
-Responsive GitHub Pages website for centrally collecting ~40 interviews about the
+Responsive GitHub Pages website for centrally collecting up to 44 interviews about the
 relationship between spatial proximity and professional exchange at NXT, Reutlingen.
 The university/NXT logo is provided in `assets/nxt-logo.png`.
 
@@ -17,9 +17,15 @@ The university/NXT logo is provided in `assets/nxt-logo.png`.
 - Seven-sheet Excel export: Persons, Interviews, Answers, Edges, Locations, Nodes, Datenqualitaet
 - Gephi-compatible Node/Edge sheet headers (Id, Label, Source, Target)
 
-IMPORTANT: The questionnaire is a FIRST INSTRUMENT DRAFT based on the feedback
-notes dated 10 November 2026. The final full questionnaire was not provided.
-Do not collect real interview data until the wording and the privacy process are approved.
+The interview instrument now matches **Fragebogen_Netzwerkforschung_NXT_final.pdf**
+(18 November 2026): A1–A6.1, B1–B7, C1–C13, seven B2 topic combinations,
+two optional C7 places, and separate five-level scales for C9–C13.
+The existing consent and privacy notice remain part of the app and must be
+checked against the project's approved data-protection documents.
+Historical V7 answers are retained under their original keys (e.g. old C9_1…C9_5);
+new PDF answers use C9…C13 and B7_Wichtigkeit to avoid mixing unlike measures.
+The five new people P40–P44 are stored in protected Supabase only;
+**no real participant list is committed to this public repository**.
 
 ## Setup 1: dedicated Supabase project
 
@@ -100,7 +106,7 @@ silently overwriting the first. Different interviews can be edited in parallel.
 
 ## Known limits / TODO
 
-- Integrate the FINAL complete questionnaire before real interviews.
+- Pilot-test the final PDF questionnaire, confirm consent documentation and review existing V7 draft interviews before using them in final analysis.
 - Add individual Auth accounts and per-interviewer assignments if requested.
 - Add automated retention/deletion policy after research approval.
 - Confirm university branding usage and privacy review.
@@ -119,10 +125,13 @@ an installation guide (it does NOT expose an unprotected demo survey).
 ## Source of questionnaire content
 
 `Fragen zum Fragenkatalog: 10.11.2026` (feedback notes, supplied by the user):
-A1 group membership, A2 professional self-classification and organizational
-mapping question, B exchange frequency/mode/content categories including
-research, teaching, and self-governance; interview conducted together with
-respondent, interview timing to be tested, attendance tracking.
+The final PDF dated 18 November 2026 supersedes V7 for wording and coding.
+A1 contains four personnel groups; A2 includes Sonstiges; A6.1 asks since when;
+B2 allows F, L, SV and every nonempty combination; B7 is an importance scale;
+C9–C13 use distinct rating scales. The export records B2_Inhalt (e.g. F+L+SV)
+and separate B2_F/B2_L/B2_SV indicators. The Supabase schema already stores
+B2 topics as an array, so no table changes were required. Existing answers,
+interviews and network edges were preserved.
 
 ## Netzwerkmonitor: interaktive Analysen (November 2026)
 
