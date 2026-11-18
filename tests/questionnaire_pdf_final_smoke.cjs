@@ -160,10 +160,10 @@ const ratingStart=app.indexOf('const legacyC12C13='),ratingEnd=app.indexOf('cons
 assert.ok(ratingStart>=0&&ratingEnd>ratingStart,'Old values must be compatible with current form');
 const ratingContext={Q};vm.createContext(ratingContext);
 vm.runInContext(app.slice(ratingStart,ratingEnd),ratingContext);
-assert.equal(ratingContext.normalizeC12C13('C12','Genau richtig'),'Neutral');
-assert.equal(ratingContext.normalizeC12C13('C13','Eher zu viel'),'Viel');
-assert.equal(ratingContext.normalizeC12C13('C12','Viel zu wenige'),'Sehr wenig');
-assert.equal(ratingContext.normalizeC12C13('C13','Sehr viel'),'Sehr viel');
+assert.equal(vm.runInContext("normalizeC12C13('C12','Genau richtig')",ratingContext),'Neutral');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Eher zu viel')",ratingContext),'Viel');
+assert.equal(vm.runInContext("normalizeC12C13('C12','Viel zu wenige')",ratingContext),'Sehr wenig');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Sehr viel')",ratingContext),'Sehr viel');
 assert.match(app,/excelLookup\(normalizeC12C13\(key,v\),maps\[key\]\)/,
  'Excel numeric values must include historic answers');
 
