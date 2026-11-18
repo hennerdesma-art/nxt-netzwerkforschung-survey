@@ -51,7 +51,7 @@ assert.ok(!keys.has('B_Aussage_Austausch_wichtig'),'Old B attitude no longer use
 assert.equal(config.TARGET_COUNT,44,'All P01–P44 are counted');
 for(const fragment of [
  "topics_combo","normalizeB2Topics","b2ComboValue(edge.topics)",
- "key==='A6_vor_NXT'","B7_Wichtigkeit","Q.scalesC[key]","C7_'+k+'_Text",
+ "key==='A6_vor_NXT'","B7_Wichtigkeit","Q.scalesC[key]","const textKey='C7_'+key+'_Text'",
  "B2_F:e?","B2_L:e?","B2_SV:e?","Fragebogen_Version:Q.version",
  "C9:Q.scalesC.C9","C13:Q.scalesC.C13"
 ])assert.ok(app.includes(fragment),'Form/exports missing '+fragment);
