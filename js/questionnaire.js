@@ -855,13 +855,13 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "C12",
       "Gesamt_Personen",
       "C12 Wie bewerten Sie die Anzahl der Orte für spontane Begegnungen an der Fakultät?",
-      "1 = Sehr wenig; 2 = Wenig; 3 = Neutral; 4 = Viel; 5 = Sehr viel"
+      "1 = Sehr schlecht; 2 = Schlecht; 3 = Neutral; 4 = Gut; 5 = Sehr gut (historische Mengenangaben ordinal umkodiert; Originale separat gesichert)"
     ],
     [
       "C13",
       "Gesamt_Personen",
       "C13 Wie bewerten Sie den Umfang Ihres fachübergreifenden Austauschs an der Fakultät NXT?",
-      "1 = Sehr wenig; 2 = Wenig; 3 = Neutral; 4 = Viel; 5 = Sehr viel"
+      "1 = Sehr schlecht; 2 = Schlecht; 3 = Neutral; 4 = Gut; 5 = Sehr gut (historische Mengenangaben ordinal umkodiert; Originale separat gesichert)"
     ],
     [
       "Ego_ID",
@@ -967,18 +967,18 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "Sehr gut"
     ],
     "C12": [
-      "Sehr wenig",
-      "Wenig",
+      "Sehr schlecht",
+      "Schlecht",
       "Neutral",
-      "Viel",
-      "Sehr viel"
+      "Gut",
+      "Sehr gut"
     ],
     "C13": [
-      "Sehr wenig",
-      "Wenig",
+      "Sehr schlecht",
+      "Schlecht",
       "Neutral",
-      "Viel",
-      "Sehr viel"
+      "Gut",
+      "Sehr gut"
     ]
   }
 });

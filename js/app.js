@@ -412,15 +412,28 @@
   }
   const b2ComboValue=(values)=>normalizeB2Topics(values).join('+');
 
-  // Preserve historic Supabase answers; map earlier C12/C13 choices by ordinal
-  // position only when displaying questions or writing numeric Excel exports.
+  // Historic answers are recoded by ordinal position, NOT by claimed
+  // equivalence of quantity and quality. Raw labels are archived in the
+  // database migration, and older local drafts remain renderable/exportable.
   const legacyC12C13={
-    C12:['Viel zu wenige','Eher zu wenige','Genau richtig','Eher zu viele','Viel zu viele'],
-    C13:['Viel zu wenig','Eher zu wenig','Genau richtig','Eher zu viel','Viel zu viel']
+    C12:[
+      ['Sehr wenig','Viel zu wenige'],
+      ['Wenig','Eher zu wenige'],
+      ['Neutral','Genau richtig'],
+      ['Viel','Eher zu viele'],
+      ['Sehr viel','Viel zu viele']
+    ],
+    C13:[
+      ['Sehr wenig','Viel zu wenig'],
+      ['Wenig','Eher zu wenig'],
+      ['Neutral','Genau richtig'],
+      ['Viel','Eher zu viel'],
+      ['Sehr viel','Viel zu viel']
+    ]
   };
   const normalizeC12C13=(key,value)=>{
-    const old=legacyC12C13[key],current=Q.scalesC?.[key];
-    const index=old?.indexOf(value);
+    const variants=legacyC12C13[key],current=Q.scalesC?.[key];
+    const index=variants?.findIndex(group=>group.includes(value))??-1;
     return index>=0&&Array.isArray(current)?current[index]:value;
   };
 
