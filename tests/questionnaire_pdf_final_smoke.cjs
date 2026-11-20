@@ -37,8 +37,8 @@ for(const c of ['C9','C10','C11','C12','C13']){
 assert.deepEqual(Array.from(Q.scalesC.C9),['Stark erschwerend','Eher erschwerend','Kein Einfluss','Eher erleichternd','Stark erleichternd']);
 assert.deepEqual(Array.from(Q.scalesC.C10),['Nie','Selten','Manchmal','Oft','Sehr oft']);
 assert.deepEqual(Array.from(Q.scalesC.C11),['Sehr schlecht','Eher schlecht','Teils / teils','Eher gut','Sehr gut']);
-assert.deepEqual(Array.from(Q.scalesC.C12),['Sehr wenig','Wenig','Neutral','Viel','Sehr viel']);
-assert.deepEqual(Array.from(Q.scalesC.C13),['Sehr wenig','Wenig','Neutral','Viel','Sehr viel']);
+assert.deepEqual(Array.from(Q.scalesC.C12),['Sehr schlecht','Schlecht','Neutral','Gut','Sehr gut']);
+assert.deepEqual(Array.from(Q.scalesC.C13),['Sehr schlecht','Schlecht','Neutral','Gut','Sehr gut']);
 assert.ok(!('statementsC9' in Q),'Old attitude statements must not be used as C9–13');
 assert.ok(Q.placesC7.some(x=>x[0]==='Sonstige')&&Q.placesC7.some(x=>x[0]==='Sonstige2'),'C7 has two optional places');
 const keys=new Set(Q.codebook.map(row=>row[0]));
@@ -153,7 +153,7 @@ assert.equal(c7Env.form.answers.C7_Sonstige2,false,'Second custom place is auto-
 // Both updated scales use the exact same five numeric categories and preserve historic answers.
 for(const key of ['C12','C13']){
  const item=Q.codebook.find(row=>row[0]===key);
- assert.equal(item[3],'1 = Sehr wenig; 2 = Wenig; 3 = Neutral; 4 = Viel; 5 = Sehr viel',
+ assert.equal(item[3],'1 = Sehr schlecht; 2 = Schlecht; 3 = Neutral; 4 = Gut; 5 = Sehr gut (historische Mengenangaben ordinal umkodiert; Originale separat gesichert)',
   key+' Excel codebook must be aligned with the dropdown');
 }
 const ratingStart=app.indexOf('const legacyC12C13='),ratingEnd=app.indexOf('const qChoice =',ratingStart);
@@ -161,9 +161,12 @@ assert.ok(ratingStart>=0&&ratingEnd>ratingStart,'Old values must be compatible w
 const ratingContext={Q};vm.createContext(ratingContext);
 vm.runInContext(app.slice(ratingStart,ratingEnd),ratingContext);
 assert.equal(vm.runInContext("normalizeC12C13('C12','Genau richtig')",ratingContext),'Neutral');
-assert.equal(vm.runInContext("normalizeC12C13('C13','Eher zu viel')",ratingContext),'Viel');
-assert.equal(vm.runInContext("normalizeC12C13('C12','Viel zu wenige')",ratingContext),'Sehr wenig');
-assert.equal(vm.runInContext("normalizeC12C13('C13','Sehr viel')",ratingContext),'Sehr viel');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Eher zu viel')",ratingContext),'Gut');
+assert.equal(vm.runInContext("normalizeC12C13('C12','Viel zu wenige')",ratingContext),'Sehr schlecht');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Sehr viel')",ratingContext),'Sehr gut');
+assert.equal(vm.runInContext("normalizeC12C13('C12','Sehr wenig')",ratingContext),'Sehr schlecht');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Wenig')",ratingContext),'Schlecht');
+assert.equal(vm.runInContext("normalizeC12C13('C13','Viel')",ratingContext),'Gut');
 assert.match(app,/excelLookup\(normalizeC12C13\(key,v\),maps\[key\]\)/,
  'Excel numeric values must include historic answers');
 
