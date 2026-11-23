@@ -87,7 +87,7 @@
     const email = String(fd.get('email') || '').trim().toLowerCase();
     const role = String(fd.get('role') || 'interviewer');
     if (display_name.length < 2 || !email.includes('@')) { errorText = 'Bitte Namen und gültige E-Mail-Adresse angeben.'; render(); return; }
-    if (role === 'admin' && !window.confirm('Soll dieses Teammitglied wirklich Administratorrechte erhalten?')) return;
+    if (role === 'admin' && !window.NXT_I18N.confirm('Soll dieses Teammitglied wirklich Administratorrechte erhalten?')) return;
     busy = true; errorText = ''; inviteResult = null; render();
     try {
       inviteResult = await api({ action:'invite', display_name, email, role });
@@ -103,7 +103,7 @@
     const question = action === 'set_role'
       ? `Rolle von ${member.display_name} wirklich auf ${roleLabel(value)} ändern?`
       : `${member.display_name} ${value ? 'wieder aktivieren' : 'deaktivieren'}?`;
-    if (!window.confirm(question)) return;
+    if (!window.NXT_I18N.confirm(question)) return;
     busy = true; errorText = ''; render();
     try {
       await api(action === 'set_role' ? { action, user_id:userId, role:value } : { action, user_id:userId, active:value });
@@ -149,7 +149,7 @@
     } catch (_) {
       const field = host?.querySelector('#nxt-team-invite-link');
       field?.select();
-      window.alert('Einladungslink markieren und mit Strg+C kopieren.');
+      window.NXT_I18N.alert('Einladungslink markieren und mit Strg+C kopieren.');
     }
   }
   function mount(element, ctx) {
@@ -208,7 +208,7 @@
   }
   function renderPasswordScreen(user, error = '') {
     return `<div class="auth-screen"><div class="auth-visual"><img class="brand-logo" src="./assets/nxt-logo.png" alt="NXT Hochschule Reutlingen"><div><span class="auth-tag">NXT | Netzwerkforschung</span><h1 class="auth-title">Dein Zugang.<br><span>Dein Passwort.</span></h1><p class="auth-sub">Du wurdest zur gemeinsamen Interviewerfassung eingeladen. Erstelle jetzt ein eigenes Passwort für deine E-Mail-Adresse.</p></div><small class="auth-foot">NXT | REUTLINGEN UNIVERSITY</small></div>
-      <div class="auth-right"><div class="auth-card"><span class="auth-tag">Einladung angenommen</span><h2>Passwort festlegen</h2><p>Angemeldete E-Mail: <strong>${esc(user?.email || '')}</strong></p>
+      <div class="auth-right"><div class="nxt-auth-language">${window.NXT_I18N?.selector("login")||""}</div><div class="auth-card"><span class="auth-tag">Einladung angenommen</span><h2>Passwort festlegen</h2><p>Angemeldete E-Mail: <strong>${esc(user?.email || '')}</strong></p>
       <form id="nxt-team-password-form"><div class="field"><label for="nxt-new-password">Neues Passwort (mindestens 12 Zeichen)</label><input type="password" id="nxt-new-password" name="password" autocomplete="new-password" minlength="12" required></div>
       <div class="field"><label for="nxt-confirm-password">Passwort wiederholen</label><input type="password" id="nxt-confirm-password" name="confirm" autocomplete="new-password" minlength="12" required></div>
       ${error ? `<div class="form-error">${esc(error)}</div>` : ''}<button class="btn btn-primary" type="submit">Passwort speichern und anmelden</button></form>

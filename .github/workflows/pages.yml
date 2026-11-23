@@ -26,6 +26,7 @@ jobs:
           node --check js/network-tools.js
           node --check js/campus-data.js
           node tests/questionnaire_pdf_final_smoke.cjs
+          node tests/i18n_smoke.cjs
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Prepare public website only

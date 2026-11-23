@@ -1,0 +1,61 @@
+/* NXT locale switcher: sits next to the live database status on desktop. */
+.nxt-language-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 35px;
+  padding: 5px 9px;
+  border: 1px solid #d4e7e6;
+  border-radius: 10px;
+  background: #f9fdfd;
+  box-shadow: 0 1px 3px rgba(5, 72, 74, .045);
+  color: #176e73;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.nxt-language-control:focus-within { outline: 2px solid #008b92; outline-offset: 2px; }
+.nxt-language-control .nxt-language-globe { font-size: 15px; line-height: 1; }
+.nxt-language-control .nxt-language-caption { font-size: 10px; color: #42696e; }
+.nxt-language-control select {
+  color: #09656d;
+  cursor: pointer;
+  padding: 2px 16px 2px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 700 11px/1.2 inherit;
+  font-family: inherit;
+  width: auto;
+  min-height: 23px;
+  outline: 0;
+  appearance: auto;
+  box-shadow: none;
+}
+.nxt-language-control select:focus-visible { outline: none; }
+.nxt-auth-language {
+  align-self: flex-end;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 10px;
+  width: 100%;
+}
+.nxt-language-auth { background: #eff9f8; }
+@media (max-width: 1190px) {
+  .top-actions { gap: 8px; }
+  .nxt-language-control .nxt-language-caption { display: none; }
+}
+@media (max-width: 640px) {
+  .top-actions { gap: 5px; }
+  .nxt-language-control { min-height: 33px; padding: 4px 5px; border-radius: 8px; }
+  .nxt-language-control .nxt-language-globe { display: none; }
+  .nxt-language-control select { font-size: 11px; padding-right: 3px; min-width: 64px; }
+  .top-actions .avatar { display: none; }
+}
+@media (max-width: 350px) {
+  .nxt-language-control select { font-size: 10px; min-width: 57px; }
+  .top-actions .btn-icon { width: 31px; height: 31px; }
+}
