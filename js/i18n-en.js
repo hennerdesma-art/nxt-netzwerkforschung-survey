@@ -26,6 +26,7 @@
     'Analyse':'Analysis',
     'Aktualisieren':'Refresh',
     'Neu laden':'Reload',
+    'Sprache':'Language',
     'Zentral verbunden':'Connected to central database',
     'Daten aktualisieren':'Refresh data',
     'Abmelden':'Sign out',
