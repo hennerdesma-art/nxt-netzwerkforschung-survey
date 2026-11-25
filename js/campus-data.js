@@ -49,7 +49,7 @@
       {key:'C7_Aula',label:'Aula (Geb. 6)',group:'Campusorte (C7)'},
       {key:'C2_Kueche',label:'Küche / Teeküche',group:'Geteilte Infrastruktur (C2)'},
       {key:'C2_Drucker',label:'Drucker / Kopierer',group:'Geteilte Infrastruktur (C2)'},
-      {key:'C2_Sekretariat',label:'Sekretariat / Postfächer',group:'Geteilte Infrastruktur (C2)'},
+      {key:'C2_Sekretariat',label:'Dekanat Sekretariat/ NXT Stop/ Postraum',group:'Geteilte Infrastruktur (C2)'},
       {key:'C2_Meeting',label:'Meetingräume',group:'Geteilte Infrastruktur (C2)'}
     ],
     topicLabels:{F:'Forschung',L:'Lehre',SV:'Selbstverwaltung'},

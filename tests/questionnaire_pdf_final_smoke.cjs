@@ -171,3 +171,8 @@ assert.match(app,/excelLookup\(normalizeC12C13\(key,v\),maps\[key\]\)/,
  'Excel numeric values must include historic answers');
 
 console.log('PASS: PDF questionnaire A1–A6.1, B2 combinations, B7, C9–C13, export, cohort 44, network codes.');
+
+assert.equal(Q.b4.find(([code])=>code==='B')[1],'beides');
+assert.equal(Q.b5.find(([code])=>code==='B')[1],'beides');
+assert.equal(Q.spacesC2.find(([code])=>code==='Sekretariat')[1],"Dekanat Sekretariat/ NXT Stop/ Postraum");
+assert.equal(Q.encountersC8.find(([code])=>code==='Sekretariat')[1],'Sekretariat / Poststelle');

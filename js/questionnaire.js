@@ -67,8 +67,8 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
   "b_explanations": {
     "B2": "B2 · Worum geht es in den fachlichen Gesprächen? F = Forschung, L = Lehre, SV = organisatorische Selbstverwaltung (mehrere möglich).",
     "B3": "B3 · Wie häufig finden die fachlichen Gespräche statt? 1 = seltener als monatlich bis 5 = (fast) täglich.",
-    "B4": "B4 · Wie kommt der fachliche Austausch meistens zustande? S = spontan, G = geplant, B = beides etwa gleich.",
-    "B5": "B5 · Wie findet der Austausch überwiegend statt? P = persönlich, D = digital, B = beides etwa gleich.",
+    "B4": "B4 · Wie kommt der fachliche Austausch meistens zustande? S = spontan, G = geplant, B = beides.",
+    "B5": "B5 · Wie findet der Austausch überwiegend statt? P = persönlich, D = digital, B = beides.",
     "B6": "B6 · Kannten Sie die Person schon vor der Gründung der Fakultät NXT? Ja = persönlich bekannt (nicht nur vom Sehen oder Namen)."
   },
   "b2": [
@@ -134,7 +134,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "B",
-      "beides etwa gleich"
+      "beides"
     ]
   ],
   "b5": [
@@ -148,7 +148,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "B",
-      "beides etwa gleich"
+      "beides"
     ]
   ],
   "b6_question": "Kannten Sie die Person schon vor Gründung der Fakultät NXT?",
@@ -248,7 +248,7 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     ],
     [
       "Sekretariat",
-      "Sekretariat / Poststelle"
+      "Dekanat Sekretariat/ NXT Stop/ Postraum"
     ],
     [
       "Meeting",
@@ -494,19 +494,19 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
     [
       "C2_Sekretariat",
       "Gesamt_Personen",
-      "C2 Sekretariat / Poststelle",
+      "C2 Dekanat Sekretariat/ NXT Stop/ Postraum",
       "1 = ja, 0 = nein"
     ],
     [
       "C2_Sekretariat_Etage",
       "Gesamt_Personen",
-      "C2 Sekretariat / Postfächer – Etage/Flur",
+      "C2 Dekanat Sekretariat/ NXT Stop/ Postraum – Etage/Flur",
       "Freitext"
     ],
     [
       "C2_Sekretariat_Standorte",
       "Gesamt_Personen",
-      "C2 Sekretariat / Poststelle – alle Standorte",
+      "C2 Dekanat Sekretariat/ NXT Stop/ Postraum – alle Standorte",
       "Mehrfachnennungen als Gebäude / Etage bzw. Flur; Einträge mit | getrennt"
     ],
     [
@@ -921,13 +921,13 @@ window.NXT_QUESTIONNAIRE = Object.freeze({
       "B4_Zustandekommen",
       "Gesamt_Netzwerk",
       "B4 Wie kommt der Austausch meistens zustande?",
-      "S = spontan / zufällig; G = geplant; B = beides etwa gleich"
+      "S = spontan / zufällig; G = geplant; B = beides"
     ],
     [
       "B5_Medium",
       "Gesamt_Netzwerk",
       "B5 Wie findet der Austausch überwiegend statt?",
-      "P = persönlich vor Ort; D = digital; B = beides etwa gleich"
+      "P = persönlich vor Ort; D = digital; B = beides"
     ],
     [
       "B6_vor_NXT_bekannt",
